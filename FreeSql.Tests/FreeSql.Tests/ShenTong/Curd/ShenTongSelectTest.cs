@@ -871,7 +871,7 @@ namespace FreeSql.Tests.ShenTong
                 {
                     b.Key.Title,
                     b.Key.yyyy,
-
+                    b.Key,
                     cou = b.Count(),
                     sum2 = b.Sum(b.Value.TypeGuid)
                 });
@@ -883,7 +883,8 @@ namespace FreeSql.Tests.ShenTong
                     b.Key,
                     cou = b.Count(),
                     sum2 = b.Sum(b.Value.TypeGuid),
-                    sum3 = b.Sum(b.Value.Type.Parent.Id)
+                    sum3 = b.Sum(b.Value.Type.Parent.Id),
+                    Name = aggsql1 == null ? "未定义类型" : b.Key
                 });
         }
         [Fact]
@@ -1842,6 +1843,8 @@ WHERE ((((a.""ID"")::text) in (SELECT b.""TITLE""
 
             [Column(StringLength = 6)]
             public virtual string ParentCode { get; set; }
+
+            public int testint { get; set; }
         }
         [Table(Name = "D_District", DisableSyncStructure = true)]
         public class VM_District_Child : BaseDistrict

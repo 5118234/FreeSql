@@ -36,6 +36,7 @@ namespace FreeSql.Odbc.MySql
                     .WithTransaction(_transaction)
                     .NoneParameter(true) as Internal.CommonProvider.InsertProvider<T1>;
                 insert._source = data;
+                insert._noneParameterFlag = flagInsert ? "cuc" : "cu";
 
                 string sql = "";
                 if (IdentityColumn != null && flagInsert) sql = insert.ToSql();
@@ -43,7 +44,12 @@ namespace FreeSql.Odbc.MySql
                 {
                     insert.InsertIdentity();
                     if (_doNothing == false)
-                        sql = new OdbcMySqlOnDuplicateKeyUpdate<T1>(insert).ToSql();
+                    {
+                        var cols = _table.Columns.Values.Where(a => a.Attribute.IsPrimary == false && a.Attribute.CanUpdate == true && _updateIgnore.ContainsKey(a.Attribute.Name) == false);
+                        sql = new OdbcMySqlOnDuplicateKeyUpdate<T1>(insert)
+                            .UpdateColumns(cols.Select(a => a.Attribute.Name).ToArray())
+                            .ToSql();
+                    }
                     else
                     {
                         if (_table.Primarys.Any() == false) throw new Exception($"fsql.InsertOrUpdate + IfExistsDoNothing + MySql 要求实体类 {_table.CsName} 必须有主键");

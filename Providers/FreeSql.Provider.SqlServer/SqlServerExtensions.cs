@@ -3,7 +3,11 @@ using FreeSql.Internal.Model;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+#if microsoft
+using Microsoft.Data.SqlClient;
+#else
 using System.Data.SqlClient;
+#endif
 using System.Threading.Tasks;
 
 public static partial class FreeSqlSqlServerGlobalExtensions
@@ -38,11 +42,11 @@ public static partial class FreeSqlSqlServerGlobalExtensions
     /// <param name="options"></param>
     public static IFreeSql SetGlobalSelectWithLock(this IFreeSql that, SqlServerLock lockType, Dictionary<Type, bool> rule)
     {
-        var value = NaviteTuple.Create(lockType, rule);
+        var value = NativeTuple.Create(lockType, rule);
         _dicSetGlobalSelectWithLock.AddOrUpdate(that.Ado.Identifier, value, (_, __) => value);
         return that;
     }
-    internal static ConcurrentDictionary<Guid, NaviteTuple<SqlServerLock, Dictionary<Type, bool>>> _dicSetGlobalSelectWithLock = new ConcurrentDictionary<Guid, NaviteTuple<SqlServerLock, Dictionary<Type, bool>>>();
+    internal static ConcurrentDictionary<Guid, NativeTuple<SqlServerLock, Dictionary<Type, bool>>> _dicSetGlobalSelectWithLock = new ConcurrentDictionary<Guid, NativeTuple<SqlServerLock, Dictionary<Type, bool>>>();
 
     #region ExecuteSqlBulkCopy
     /// <summary>

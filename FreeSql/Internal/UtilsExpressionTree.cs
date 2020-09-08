@@ -66,7 +66,7 @@ namespace FreeSql.Internal
                 trytb.DbOldName = trytb.DbOldName?.ToUpper();
             }
             if (tbattr != null) trytb.DisableSyncStructure = tbattr.DisableSyncStructure;
-            var propsLazy = new List<NaviteTuple<PropertyInfo, bool, bool, MethodInfo, MethodInfo>>();
+            var propsLazy = new List<NativeTuple<PropertyInfo, bool, bool, MethodInfo, MethodInfo>>();
             var propsNavObjs = new List<PropertyInfo>();
             var propsComment = CommonUtils.GetProperyCommentBySummary(entity);
             var propsCommentByDescAttr = CommonUtils.GetPropertyCommentByDescriptionAttribute(entity);
@@ -95,12 +95,14 @@ namespace FreeSql.Internal
                         var getIsVirtual = getMethod?.IsVirtual == true && getMethod?.IsFinal == false;// trytb.Type.GetMethod($"get_{p.Name}")?.IsVirtual;
                         var setIsVirtual = setMethod?.IsVirtual == true && setMethod?.IsFinal == false;
                         if (getIsVirtual == true || setIsVirtual == true)
-                            propsLazy.Add(NaviteTuple.Create(p, getIsVirtual, setIsVirtual, getMethod, setMethod));
+                            propsLazy.Add(NativeTuple.Create(p, getIsVirtual, setIsVirtual, getMethod, setMethod));
                     }
                     propsNavObjs.Add(p);
                     continue;
                 }
                 if (tp == null && colattr != null) colattr.IsIgnore = true; //无法匹配的属性，认定是导航属性，且自动过滤
+                var colattrIsNullable = colattr?._IsNullable;
+                var colattrIsNull = colattr == null;
                 if (colattr == null)
                     colattr = new ColumnAttribute
                     {
@@ -119,6 +121,8 @@ namespace FreeSql.Internal
                 else
                     colattr.DbType = colattr.DbType.ToUpper();
 
+                if (colattrIsNull == false && colattrIsNullable == true) colattr.DbType = colattr.DbType.Replace("NOT NULL", "");
+                if (colattrIsNull == false && colattrIsNullable == false && colattr.DbType.Contains("NOT NULL") == false) colattr.DbType = Regex.Replace(colattr.DbType, @"\bNULL\b", "").Trim() + " NOT NULL";
                 if (colattr._IsNullable == null && tp != null && tp.isnullable == null) colattr.IsNullable = tp.dbtypeFull.Contains("NOT NULL") == false;
                 if (colattr.DbType?.Contains("NOT NULL") == true) colattr.IsNullable = false;
                 if (string.IsNullOrEmpty(colattr.Name)) colattr.Name = p.Name;
@@ -183,7 +187,7 @@ namespace FreeSql.Internal
                 }
                 try
                 {
-                    col.DbDefaultValue = common.GetNoneParamaterSqlValue(new List<DbParameter>(), colattr.MapType, defaultValue);
+                    col.DbDefaultValue = common.GetNoneParamaterSqlValue(new List<DbParameter>(), "init", colattr.MapType, defaultValue);
                 }
                 catch
                 {
@@ -243,6 +247,7 @@ namespace FreeSql.Internal
                             break;
                         case DataType.PostgreSQL:
                         case DataType.OdbcPostgreSQL:
+                        case DataType.KingbaseES:
                         case DataType.OdbcKingbaseES:
                         case DataType.ShenTong:
                             if (strlen < 0) colattr.DbType = "TEXT";
@@ -275,22 +280,23 @@ namespace FreeSql.Internal
                 if (colattr.MapType == typeof(byte[]) && colattr.StringLength != 0)
                 {
                     int strlen = colattr.StringLength;
-                    var charPatten = @"(VARBINARY|BINARY|BYTEA)\s*(\([^\)]*\))?";
+                    var bytePatten = @"(VARBINARY|BINARY|BYTEA)\s*(\([^\)]*\))?";
                     switch (common._orm.Ado.DataType)
                     {
                         case DataType.MySql:
                         case DataType.OdbcMySql:
                             if (strlen == -2) colattr.DbType = "LONGBLOB";
                             else if (strlen < 0) colattr.DbType = "BLOB";
-                            else colattr.DbType = Regex.Replace(colattr.DbType, charPatten, $"$1({strlen})");
+                            else colattr.DbType = Regex.Replace(colattr.DbType, bytePatten, $"$1({strlen})");
                             break;
                         case DataType.SqlServer:
                         case DataType.OdbcSqlServer:
-                            if (strlen < 0) colattr.DbType = Regex.Replace(colattr.DbType, charPatten, $"$1(MAX)");
-                            else colattr.DbType = Regex.Replace(colattr.DbType, charPatten, $"$1({strlen})");
+                            if (strlen < 0) colattr.DbType = Regex.Replace(colattr.DbType, bytePatten, $"$1(MAX)");
+                            else colattr.DbType = Regex.Replace(colattr.DbType, bytePatten, $"$1({strlen})");
                             break;
                         case DataType.PostgreSQL:
                         case DataType.OdbcPostgreSQL:
+                        case DataType.KingbaseES:
                         case DataType.OdbcKingbaseES:
                         case DataType.ShenTong: //驱动引发的异常:“System.Data.OscarClient.OscarException”(位于 System.Data.OscarClient.dll 中)
                             colattr.DbType = "BYTEA"; //变长二进制串
@@ -310,9 +316,14 @@ namespace FreeSql.Internal
                             break;
                         case DataType.MsAccess:
                             if (strlen < 0) colattr.DbType = "BLOB";
-                            else colattr.DbType = Regex.Replace(colattr.DbType, charPatten, $"$1({strlen})");
+                            else colattr.DbType = Regex.Replace(colattr.DbType, bytePatten, $"$1({strlen})");
                             break;
                     }
+                }
+                if (colattr.MapType == typeof(decimal) && colattr.Precision > 0)
+                {
+                    var decimalPatten = @"(DECIMAL|NUMERIC|NUMBER)\s*(\([^\)]*\))?";
+                    colattr.DbType = Regex.Replace(colattr.DbType, decimalPatten, $"$1({colattr.Precision},{colattr.Scale})");
                 }
 
                 if (trytb.Columns.ContainsKey(colattr.Name)) throw new Exception($"ColumnAttribute.Name {colattr.Name} 重复存在，请检查（注意：不区分大小写）");
@@ -442,12 +453,12 @@ namespace FreeSql.Internal
             foreach (var col in trytb.Primarys)
             {
                 col.Attribute.IsNullable = false;
-                col.Attribute.DbType = col.Attribute.DbType.Replace("NOT NULL", "").Trim();
+                col.Attribute.DbType = col.Attribute.DbType.Replace("NOT NULL", "").Replace(" NULL", "").Trim();
             }
             foreach (var col in trytb.Columns.Values)
             {
                 var ltp = @"\(([^\)]+)\)";
-                col.DbTypeText = Regex.Replace(col.Attribute.DbType.Replace("NOT NULL", "").Trim(), ltp, "");
+                col.DbTypeText = Regex.Replace(col.Attribute.DbType.Replace("NOT NULL", "").Replace(" NULL", "").Trim(), ltp, "");
                 var m = Regex.Match(col.Attribute.DbType, ltp);
                 if (m.Success == false) continue;
                 var sizeStr = m.Groups[1].Value.Trim();
@@ -525,7 +536,7 @@ namespace FreeSql.Internal
 
             return tbc.TryGetValue(entity, out var trytb2) ? trytb2 : trytb;
         }
-        public static void AddTableRef(CommonUtils common, TableInfo trytb, PropertyInfo pnv, bool isLazy, NaviteTuple<PropertyInfo, bool, bool, MethodInfo, MethodInfo> vp, StringBuilder cscode)
+        public static void AddTableRef(CommonUtils common, TableInfo trytb, PropertyInfo pnv, bool isLazy, NativeTuple<PropertyInfo, bool, bool, MethodInfo, MethodInfo> vp, StringBuilder cscode)
         {
             var getMethod = vp?.Item4;
             var setMethod = vp?.Item5;
@@ -873,7 +884,7 @@ namespace FreeSql.Internal
                             foreach (var col in tbmid.Primarys)
                             {
                                 col.Attribute.IsNullable = false;
-                                col.Attribute.DbType = col.Attribute.DbType.Replace("NOT NULL", "").Trim();
+                                col.Attribute.DbType = col.Attribute.DbType.Replace("NOT NULL", "").Replace(" NULL", "").Trim();
                             }
                         }
                     }
@@ -1209,6 +1220,7 @@ namespace FreeSql.Internal
         public static T[] GetDbParamtersByObject<T>(string sql, object obj, string paramPrefix, Func<string, Type, object, T> constructorParamter)
         {
             if (string.IsNullOrEmpty(sql) || obj == null) return new T[0];
+            var isCheckSql = sql != "*";
             var ttype = typeof(T);
             var type = obj.GetType();
             if (type == ttype) return new[] { (T)Convert.ChangeType(obj, type) };
@@ -1218,7 +1230,7 @@ namespace FreeSql.Internal
             {
                 foreach (var key in dic.Keys)
                 {
-                    if (string.IsNullOrEmpty(paramPrefix) == false && sql.IndexOf($"{paramPrefix}{key}", StringComparison.CurrentCultureIgnoreCase) == -1) continue;
+                    if (isCheckSql && string.IsNullOrEmpty(paramPrefix) == false && sql.IndexOf($"{paramPrefix}{key}", StringComparison.CurrentCultureIgnoreCase) == -1) continue;
                     var val = dic[key];
                     var valType = val == null ? typeof(string) : val.GetType();
                     if (valType == ttype) ret.Add((T)Convert.ChangeType(val, ttype));
@@ -1230,7 +1242,7 @@ namespace FreeSql.Internal
                 var ps = type.GetPropertiesDictIgnoreCase().Values;
                 foreach (var p in ps)
                 {
-                    if (string.IsNullOrEmpty(paramPrefix) == false && sql.IndexOf($"{paramPrefix}{p.Name}", StringComparison.CurrentCultureIgnoreCase) == -1) continue;
+                    if (isCheckSql && string.IsNullOrEmpty(paramPrefix) == false && sql.IndexOf($"{paramPrefix}{p.Name}", StringComparison.CurrentCultureIgnoreCase) == -1) continue;
                     var pvalue = p.GetValue(obj, null);
                     if (p.PropertyType == ttype) ret.Add((T)Convert.ChangeType(pvalue, ttype));
                     else ret.Add(constructorParamter(p.Name, p.PropertyType, pvalue));
@@ -1312,7 +1324,14 @@ namespace FreeSql.Internal
         internal static PropertyInfo PropertyDataReaderFieldCount = typeof(DbDataReader).GetProperty("FieldCount");
         internal static object InternalDataReaderGetValue(CommonUtils commonUtil, DbDataReader dr, int index)
         {
-            if (commonUtil._orm.Ado.DataType == DataType.Dameng && dr.IsDBNull(index)) return null;
+            var orm = commonUtil._orm;
+            if (orm.Aop.AuditDataReaderHandler != null)
+            {
+                var args = new Aop.AuditDataReaderEventArgs(dr, index);
+                orm.Aop.AuditDataReaderHandler(orm, args);
+                return args.Value;
+            }
+            if (orm.Ado.DataType == DataType.Dameng && dr.IsDBNull(index)) return null; //OdbcDameng 不会报错
             return dr.GetValue(index);
         }
         internal static RowInfo ExecuteArrayRowReadClassOrTuple(string flagStr, Type typeOrg, int[] indexes, DbDataReader row, int dataIndex, CommonUtils _commonUtils)
@@ -1435,7 +1454,7 @@ namespace FreeSql.Internal
                                 var name = row2.GetName(a);
                                 //expando[name] = row2.GetValue(a);
                                 if (expandodic.ContainsKey(name)) continue;
-                                expandodic.Add(name, row2.GetValue(a));
+                                expandodic.Add(name, Utils.InternalDataReaderGetValue(_commonUtils, row2, a));
                             }
                             //expando = expandodic;
                             return new RowInfo(expandodic, fc);

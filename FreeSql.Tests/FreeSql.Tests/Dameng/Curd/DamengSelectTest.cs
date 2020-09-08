@@ -793,7 +793,7 @@ namespace FreeSql.Tests.Dameng
                 {
                     b.Key.Title,
                     b.Key.yyyy,
-
+                    b.Key,
                     cou = b.Count(),
                     sum2 = b.Sum(b.Value.TypeGuid)
                 });
@@ -812,6 +812,10 @@ namespace FreeSql.Tests.Dameng
         public void ToAggregate()
         {
             var sql = select.ToAggregate(a => new { sum = a.Sum(a.Key.Id + 11.11), avg = a.Avg(a.Key.Id), count = a.Count(), max = a.Max(a.Key.Id), min = a.Min(a.Key.Id) });
+
+            select
+                .Aggregate(a => new { sum = a.Sum(a.Key.Id), count = a.Count() }, out var output)
+                .ToList();
         }
         [Fact]
         public void OrderBy()
@@ -937,6 +941,8 @@ WHERE (((to_char(a.""ID"")) in (SELECT b.""TITLE""
         public void AsTable()
         {
             g.dameng.CodeFirst.SyncStructure(typeof(Topic), "TB_TOPIC");
+            g.dameng.CodeFirst.SyncStructure(typeof(Topic), "TB_TOPIC");
+            g.dameng.CodeFirst.SyncStructure(typeof(Topic), "TB_TOPIC", isForceSync: true);
 
             var listt = select.AsTable((a, b) => "(select * from tb_topic where clicks > 10)").Page(1, 10).ToList();
 
@@ -1077,6 +1083,11 @@ WHERE (((to_char(a.""ID"")) in (SELECT b.""TITLE""
         [Fact]
         public void Include_OneToMany()
         {
+            g.dameng.Delete<TiOtmModel1>().Where("1=1").ExecuteAffrows();
+            g.dameng.Delete<TiOtmModel2>().Where("1=1").ExecuteAffrows();
+            g.dameng.Delete<TiOtmModel3>().Where("1=1").ExecuteAffrows();
+            g.dameng.Delete<TiOtmModel4>().Where("1=1").ExecuteAffrows();
+
             var model1 = new TiOtmModel1 { m1name = DateTime.Now.Second.ToString() };
             model1.id = (int)g.dameng.Insert(model1).ExecuteIdentity();
             var model2 = new TiOtmModel2 { model2id = model1.id, m2setting = DateTime.Now.Second.ToString() };
@@ -1195,6 +1206,10 @@ WHERE (((to_char(a.""ID"")) in (SELECT b.""TITLE""
         [Fact]
         public void Include_OneToMany2()
         {
+            g.dameng.Delete<TiOtmModel11>().Where("1=1").ExecuteAffrows();
+            g.dameng.Delete<TiOtmModel22>().Where("1=1").ExecuteAffrows();
+            g.dameng.Delete<TiOtmModel33>().Where("1=1").ExecuteAffrows();
+
             string setting = "x";
             var model2 = new TiOtmModel22 { m2setting = DateTime.Now.Second.ToString(), aaa = "aaa" + DateTime.Now.Second, bbb = "bbb" + DateTime.Now.Second };
             model2.id = (int)g.dameng.Insert(model2).ExecuteIdentity();
@@ -1800,6 +1815,22 @@ WHERE (((to_char(a.""ID"")) in (SELECT b.""TITLE""
             Assert.Equal("中国[100000] -> 北京[110000]", t4[1].path);
             Assert.Equal("中国[100000] -> 北京[110000] -> 北京市[110100]", t4[2].path);
             Assert.Equal("中国[100000] -> 北京[110000] -> 东城区[110101]", t4[3].path);
+
+            var select = fsql.Select<VM_District_Child>()
+                .Where(a => a.Name == "中国")
+                .AsTreeCte()
+                //.OrderBy("a.cte_level desc") //递归层级
+                ;
+            // var list = select.ToList(); //自己调试看查到的数据
+            select.ToUpdate().Set(a => a.testint, 855).ExecuteAffrows();
+            Assert.Equal(855, fsql.Select<VM_District_Child>()
+                .Where(a => a.Name == "中国")
+                .AsTreeCte().Distinct().First(a => a.testint));
+
+            Assert.Equal(4, select.ToDelete().ExecuteAffrows());
+            Assert.False(fsql.Select<VM_District_Child>()
+                .Where(a => a.Name == "中国")
+                .AsTreeCte().Any());
         }
 
         [Table(Name = "D_District")]
@@ -1813,6 +1844,8 @@ WHERE (((to_char(a.""ID"")) in (SELECT b.""TITLE""
 
             [Column(StringLength = 6)]
             public virtual string ParentCode { get; set; }
+
+            public int testint { get; set; }
         }
         [Table(Name = "D_District", DisableSyncStructure = true)]
         public class VM_District_Child : BaseDistrict

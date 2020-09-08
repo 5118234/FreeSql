@@ -23,7 +23,7 @@ namespace FreeSql.Internal
     public abstract class CommonUtils
     {
 
-        public abstract string GetNoneParamaterSqlValue(List<DbParameter> specialParams, Type type, object value);
+        public abstract string GetNoneParamaterSqlValue(List<DbParameter> specialParams, string specialParamFlag, Type type, object value);
         public abstract DbParameter AppendParamter(List<DbParameter> _params, string parameterName, ColumnInfo col, Type type, object value);
         public abstract DbParameter[] GetDbParamtersByObject(string sql, object obj);
         public abstract string FormatSql(string sql, params object[] args);
@@ -154,6 +154,8 @@ namespace FreeSql.Internal
                 if (trycol.ServerTime != DateTimeKind.Unspecified) attr.ServerTime = trycol.ServerTime;
                 if (trycol._StringLength != null) attr.StringLength = trycol.StringLength;
                 if (!string.IsNullOrEmpty(trycol.InsertValueSql)) attr.InsertValueSql = trycol.InsertValueSql;
+                if (trycol._Precision != null) attr.Precision = trycol.Precision;
+                if (trycol._Scale != null) attr.Scale = trycol.Scale;
             }
             var attrs = proto.GetCustomAttributes(typeof(ColumnAttribute), false);
             foreach (var tryattrobj in attrs)
@@ -174,7 +176,9 @@ namespace FreeSql.Internal
                 if (tryattr._CanUpdate != null) attr._CanUpdate = tryattr.CanUpdate;
                 if (tryattr.ServerTime != DateTimeKind.Unspecified) attr.ServerTime = tryattr.ServerTime;
                 if (tryattr._StringLength != null) attr.StringLength = tryattr.StringLength;
-                if (!string.IsNullOrEmpty(tryattr.InsertValueSql)) attr.InsertValueSql = tryattr.InsertValueSql;
+                if (!string.IsNullOrEmpty(tryattr.InsertValueSql)) attr.InsertValueSql = tryattr.InsertValueSql; 
+                if (tryattr._Precision != null) attr.Precision = tryattr.Precision;
+                if (tryattr._Scale != null) attr.Scale = tryattr.Scale;
             }
             ColumnAttribute ret = null;
             if (!string.IsNullOrEmpty(attr.Name)) ret = attr;
@@ -192,6 +196,8 @@ namespace FreeSql.Internal
             if (attr.ServerTime != DateTimeKind.Unspecified) ret = attr;
             if (attr._StringLength != null) ret = attr;
             if (!string.IsNullOrEmpty(attr.InsertValueSql)) ret = attr;
+            if (attr._Precision != null) ret = attr;
+            if (attr._Scale != null) ret = attr;
             if (ret != null && ret.MapType == null) ret.MapType = proto.PropertyType;
             return ret;
         }
@@ -271,7 +277,7 @@ namespace FreeSql.Internal
                 {
                     if (pkidx > 0) sb.Append(" AND ");
                     sb.Append(aliasAndDot).Append(this.QuoteSqlName(pk.Attribute.Name));
-                    sb.Append(this.FormatSql(" = {0}", pk.GetMapValue(dywhere)));
+                    sb.Append(this.FormatSql(" = {0}", pk.GetDbValue(dywhere)));
                     ++pkidx;
                 }
                 return sb.ToString();
@@ -279,6 +285,31 @@ namespace FreeSql.Internal
             else if (primarys.Length == 1 && type == typeof(string))
             {
                 return $"{aliasAndDot}{this.QuoteSqlName(pk1.Attribute.Name)} = {this.FormatSql("{0}", Utils.GetDataReaderValue(pk1.Attribute.MapType, dywhere))}";
+            }
+            else if (primarys.Length == 1 && dywhere is IEnumerable)
+            {
+                var sb = new StringBuilder();
+                var ie = dywhere as IEnumerable;
+                var ieidx = 0;
+                var isEntityType = false;
+                var isAny = false;
+                sb.Append(aliasAndDot).Append(this.QuoteSqlName(pk1.Attribute.Name)).Append(" IN ("); //or会造成扫全表
+                foreach (var i in ie)
+                {
+                    isAny = true;
+                    if (ieidx > 0) sb.Append(",");
+                    if (ieidx == 0)
+                    {
+                        var itype = i.GetType();
+                        isEntityType = (itype == table.Type || itype.BaseType == table.Type);
+                    }
+                    if (isEntityType) sb.Append(this.FormatSql("{0}", primarys[0].GetDbValue(i)));
+                    else sb.Append(this.FormatSql("{0}", Utils.GetDataReaderValue(pk1.Attribute.MapType, i)));
+                    ++ieidx;
+                }
+                if (isAny == false) return "";
+                sb.Append(")");
+                return sb.ToString();
             }
             else if (dywhere is IEnumerable)
             {
@@ -324,7 +355,7 @@ namespace FreeSql.Internal
             {
                 var sbin = new StringBuilder();
                 sbin.Append(aliasAndDot).Append(this.QuoteSqlName(pk1.Attribute.Name));
-                var indt = its.Select(a => pk1.GetMapValue(a)).Where(a => a != null).ToArray();
+                var indt = its.Select(a => pk1.GetDbValue(a)).Where(a => a != null).ToArray();
                 if (indt.Any() == false) return null;
                 if (indt.Length == 1) sbin.Append(" = ").Append(this.FormatSql("{0}", indt.First()));
                 else sbin.Append(" IN (").Append(string.Join(",", indt.Select(a => this.FormatSql("{0}", a)))).Append(")");
@@ -337,7 +368,7 @@ namespace FreeSql.Internal
             {
                 var filter = "";
                 foreach (var pk in table.Primarys)
-                    filter += $" AND {aliasAndDot}{this.QuoteSqlName(pk.Attribute.Name)} = {this.FormatSql("{0}", pk.GetMapValue(item))}";
+                    filter += $" AND {aliasAndDot}{this.QuoteSqlName(pk.Attribute.Name)} = {this.FormatSql("{0}", pk.GetDbValue(item))}";
                 if (string.IsNullOrEmpty(filter)) continue;
                 if (sb != null)
                 {

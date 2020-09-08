@@ -14,6 +14,26 @@ namespace FreeSql.Internal.CommonProvider
 {
     partial class AdoProvider
     {
+        async public Task<bool> ExecuteConnectTestAsync()
+        {
+            try
+            {
+                switch (DataType)
+                {
+                    case DataType.Oracle:
+                    case DataType.OdbcOracle:
+                        await ExecuteNonQueryAsync(" SELECT 1 FROM dual");
+                        return true;
+                }
+                await ExecuteNonQueryAsync(" SELECT 1");
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public Task<List<T>> QueryAsync<T>(string cmdText, object parms = null) => QueryAsync<T>(null, null, null, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
         public Task<List<T>> QueryAsync<T>(DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T>(null, null, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
         public Task<List<T>> QueryAsync<T>(DbConnection connection, DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T>(null, connection, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
@@ -51,14 +71,14 @@ namespace FreeSql.Internal.CommonProvider
             return ret;
         }
         #region QueryAsync multi
-        public Task<NaviteTuple<List<T1>, List<T2>>> QueryAsync<T1, T2>(string cmdText, object parms = null) => QueryAsync<T1, T2>(null, null, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
-        public Task<NaviteTuple<List<T1>, List<T2>>> QueryAsync<T1, T2>(DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T1, T2>(null, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
-        public Task<NaviteTuple<List<T1>, List<T2>>> QueryAsync<T1, T2>(DbConnection connection, DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T1, T2>(connection, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
-        public Task<NaviteTuple<List<T1>, List<T2>>> QueryAsync<T1, T2>(CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => QueryAsync<T1, T2>(null, null, cmdType, cmdText, cmdParms);
-        public Task<NaviteTuple<List<T1>, List<T2>>> QueryAsync<T1, T2>(DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => QueryAsync<T1, T2>(null, transaction, cmdType, cmdText, cmdParms);
-        async public Task<NaviteTuple<List<T1>, List<T2>>> QueryAsync<T1, T2>(DbConnection connection, DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms)
+        public Task<NativeTuple<List<T1>, List<T2>>> QueryAsync<T1, T2>(string cmdText, object parms = null) => QueryAsync<T1, T2>(null, null, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
+        public Task<NativeTuple<List<T1>, List<T2>>> QueryAsync<T1, T2>(DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T1, T2>(null, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
+        public Task<NativeTuple<List<T1>, List<T2>>> QueryAsync<T1, T2>(DbConnection connection, DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T1, T2>(connection, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
+        public Task<NativeTuple<List<T1>, List<T2>>> QueryAsync<T1, T2>(CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => QueryAsync<T1, T2>(null, null, cmdType, cmdText, cmdParms);
+        public Task<NativeTuple<List<T1>, List<T2>>> QueryAsync<T1, T2>(DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => QueryAsync<T1, T2>(null, transaction, cmdType, cmdText, cmdParms);
+        async public Task<NativeTuple<List<T1>, List<T2>>> QueryAsync<T1, T2>(DbConnection connection, DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms)
         {
-            if (string.IsNullOrEmpty(cmdText)) return NaviteTuple.Create(new List<T1>(), new List<T2>());
+            if (string.IsNullOrEmpty(cmdText)) return NativeTuple.Create(new List<T1>(), new List<T2>());
             var ret1 = new List<T1>();
             var type1 = typeof(T1);
             string flag1 = null;
@@ -110,18 +130,18 @@ namespace FreeSql.Internal.CommonProvider
                         break;
                 }
                 return Task.FromResult(false);
-            }, cmdType, cmdText, cmdParms);
-            return NaviteTuple.Create(ret1, ret2);
+            }, null, cmdType, cmdText, cmdParms);
+            return NativeTuple.Create(ret1, ret2);
         }
 
-        public Task<NaviteTuple<List<T1>, List<T2>, List<T3>>> QueryAsync<T1, T2, T3>(string cmdText, object parms = null) => QueryAsync<T1, T2, T3>(null, null, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
-        public Task<NaviteTuple<List<T1>, List<T2>, List<T3>>> QueryAsync<T1, T2, T3>(DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T1, T2, T3>(null, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
-        public Task<NaviteTuple<List<T1>, List<T2>, List<T3>>> QueryAsync<T1, T2, T3>(DbConnection connection, DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T1, T2, T3>(connection, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
-        public Task<NaviteTuple<List<T1>, List<T2>, List<T3>>> QueryAsync<T1, T2, T3>(CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => QueryAsync<T1, T2, T3>(null, null, cmdType, cmdText, cmdParms);
-        public Task<NaviteTuple<List<T1>, List<T2>, List<T3>>> QueryAsync<T1, T2, T3>(DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => QueryAsync<T1, T2, T3>(null, transaction, cmdType, cmdText, cmdParms);
-        async public Task<NaviteTuple<List<T1>, List<T2>, List<T3>>> QueryAsync<T1, T2, T3>(DbConnection connection, DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms)
+        public Task<NativeTuple<List<T1>, List<T2>, List<T3>>> QueryAsync<T1, T2, T3>(string cmdText, object parms = null) => QueryAsync<T1, T2, T3>(null, null, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
+        public Task<NativeTuple<List<T1>, List<T2>, List<T3>>> QueryAsync<T1, T2, T3>(DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T1, T2, T3>(null, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
+        public Task<NativeTuple<List<T1>, List<T2>, List<T3>>> QueryAsync<T1, T2, T3>(DbConnection connection, DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T1, T2, T3>(connection, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
+        public Task<NativeTuple<List<T1>, List<T2>, List<T3>>> QueryAsync<T1, T2, T3>(CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => QueryAsync<T1, T2, T3>(null, null, cmdType, cmdText, cmdParms);
+        public Task<NativeTuple<List<T1>, List<T2>, List<T3>>> QueryAsync<T1, T2, T3>(DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => QueryAsync<T1, T2, T3>(null, transaction, cmdType, cmdText, cmdParms);
+        async public Task<NativeTuple<List<T1>, List<T2>, List<T3>>> QueryAsync<T1, T2, T3>(DbConnection connection, DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms)
         {
-            if (string.IsNullOrEmpty(cmdText)) return NaviteTuple.Create(new List<T1>(), new List<T2>(), new List<T3>());
+            if (string.IsNullOrEmpty(cmdText)) return NativeTuple.Create(new List<T1>(), new List<T2>(), new List<T3>());
             var ret1 = new List<T1>();
             var type1 = typeof(T1);
             string flag1 = null;
@@ -196,18 +216,18 @@ namespace FreeSql.Internal.CommonProvider
                         break;
                 }
                 return Task.FromResult(false);
-            }, cmdType, cmdText, cmdParms);
-            return NaviteTuple.Create(ret1, ret2, ret3);
+            }, null, cmdType, cmdText, cmdParms);
+            return NativeTuple.Create(ret1, ret2, ret3);
         }
 
-        public Task<NaviteTuple<List<T1>, List<T2>, List<T3>, List<T4>>> QueryAsync<T1, T2, T3, T4>(string cmdText, object parms = null) => QueryAsync<T1, T2, T3, T4>(null, null, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
-        public Task<NaviteTuple<List<T1>, List<T2>, List<T3>, List<T4>>> QueryAsync<T1, T2, T3, T4>(DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T1, T2, T3, T4>(null, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
-        public Task<NaviteTuple<List<T1>, List<T2>, List<T3>, List<T4>>> QueryAsync<T1, T2, T3, T4>(DbConnection connection, DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T1, T2, T3, T4>(connection, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
-        public Task<NaviteTuple<List<T1>, List<T2>, List<T3>, List<T4>>> QueryAsync<T1, T2, T3, T4>(CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => QueryAsync<T1, T2, T3, T4>(null, null, cmdType, cmdText, cmdParms);
-        public Task<NaviteTuple<List<T1>, List<T2>, List<T3>, List<T4>>> QueryAsync<T1, T2, T3, T4>(DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => QueryAsync<T1, T2, T3, T4>(null, transaction, cmdType, cmdText, cmdParms);
-        async public Task<NaviteTuple<List<T1>, List<T2>, List<T3>, List<T4>>> QueryAsync<T1, T2, T3, T4>(DbConnection connection, DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms)
+        public Task<NativeTuple<List<T1>, List<T2>, List<T3>, List<T4>>> QueryAsync<T1, T2, T3, T4>(string cmdText, object parms = null) => QueryAsync<T1, T2, T3, T4>(null, null, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
+        public Task<NativeTuple<List<T1>, List<T2>, List<T3>, List<T4>>> QueryAsync<T1, T2, T3, T4>(DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T1, T2, T3, T4>(null, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
+        public Task<NativeTuple<List<T1>, List<T2>, List<T3>, List<T4>>> QueryAsync<T1, T2, T3, T4>(DbConnection connection, DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T1, T2, T3, T4>(connection, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
+        public Task<NativeTuple<List<T1>, List<T2>, List<T3>, List<T4>>> QueryAsync<T1, T2, T3, T4>(CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => QueryAsync<T1, T2, T3, T4>(null, null, cmdType, cmdText, cmdParms);
+        public Task<NativeTuple<List<T1>, List<T2>, List<T3>, List<T4>>> QueryAsync<T1, T2, T3, T4>(DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => QueryAsync<T1, T2, T3, T4>(null, transaction, cmdType, cmdText, cmdParms);
+        async public Task<NativeTuple<List<T1>, List<T2>, List<T3>, List<T4>>> QueryAsync<T1, T2, T3, T4>(DbConnection connection, DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms)
         {
-            if (string.IsNullOrEmpty(cmdText)) return NaviteTuple.Create(new List<T1>(), new List<T2>(), new List<T3>(), new List<T4>());
+            if (string.IsNullOrEmpty(cmdText)) return NativeTuple.Create(new List<T1>(), new List<T2>(), new List<T3>(), new List<T4>());
             var ret1 = new List<T1>();
             var type1 = typeof(T1);
             string flag1 = null;
@@ -305,18 +325,18 @@ namespace FreeSql.Internal.CommonProvider
                         break;
                 }
                 return Task.FromResult(false);
-            }, cmdType, cmdText, cmdParms);
-            return NaviteTuple.Create(ret1, ret2, ret3, ret4);
+            }, null, cmdType, cmdText, cmdParms);
+            return NativeTuple.Create(ret1, ret2, ret3, ret4);
         }
 
-        public Task<NaviteTuple<List<T1>, List<T2>, List<T3>, List<T4>, List<T5>>> QueryAsync<T1, T2, T3, T4, T5>(string cmdText, object parms = null) => QueryAsync<T1, T2, T3, T4, T5>(null, null, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
-        public Task<NaviteTuple<List<T1>, List<T2>, List<T3>, List<T4>, List<T5>>> QueryAsync<T1, T2, T3, T4, T5>(DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T1, T2, T3, T4, T5>(null, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
-        public Task<NaviteTuple<List<T1>, List<T2>, List<T3>, List<T4>, List<T5>>> QueryAsync<T1, T2, T3, T4, T5>(DbConnection connection, DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T1, T2, T3, T4, T5>(connection, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
-        public Task<NaviteTuple<List<T1>, List<T2>, List<T3>, List<T4>, List<T5>>> QueryAsync<T1, T2, T3, T4, T5>(CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => QueryAsync<T1, T2, T3, T4, T5>(null, null, cmdType, cmdText, cmdParms);
-        public Task<NaviteTuple<List<T1>, List<T2>, List<T3>, List<T4>, List<T5>>> QueryAsync<T1, T2, T3, T4, T5>(DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => QueryAsync<T1, T2, T3, T4, T5>(null, transaction, cmdType, cmdText, cmdParms);
-        async public Task<NaviteTuple<List<T1>, List<T2>, List<T3>, List<T4>, List<T5>>> QueryAsync<T1, T2, T3, T4, T5>(DbConnection connection, DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms)
+        public Task<NativeTuple<List<T1>, List<T2>, List<T3>, List<T4>, List<T5>>> QueryAsync<T1, T2, T3, T4, T5>(string cmdText, object parms = null) => QueryAsync<T1, T2, T3, T4, T5>(null, null, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
+        public Task<NativeTuple<List<T1>, List<T2>, List<T3>, List<T4>, List<T5>>> QueryAsync<T1, T2, T3, T4, T5>(DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T1, T2, T3, T4, T5>(null, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
+        public Task<NativeTuple<List<T1>, List<T2>, List<T3>, List<T4>, List<T5>>> QueryAsync<T1, T2, T3, T4, T5>(DbConnection connection, DbTransaction transaction, string cmdText, object parms = null) => QueryAsync<T1, T2, T3, T4, T5>(connection, transaction, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
+        public Task<NativeTuple<List<T1>, List<T2>, List<T3>, List<T4>, List<T5>>> QueryAsync<T1, T2, T3, T4, T5>(CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => QueryAsync<T1, T2, T3, T4, T5>(null, null, cmdType, cmdText, cmdParms);
+        public Task<NativeTuple<List<T1>, List<T2>, List<T3>, List<T4>, List<T5>>> QueryAsync<T1, T2, T3, T4, T5>(DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => QueryAsync<T1, T2, T3, T4, T5>(null, transaction, cmdType, cmdText, cmdParms);
+        async public Task<NativeTuple<List<T1>, List<T2>, List<T3>, List<T4>, List<T5>>> QueryAsync<T1, T2, T3, T4, T5>(DbConnection connection, DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms)
         {
-            if (string.IsNullOrEmpty(cmdText)) return NaviteTuple.Create(new List<T1>(), new List<T2>(), new List<T3>(), new List<T4>(), new List<T5>());
+            if (string.IsNullOrEmpty(cmdText)) return NativeTuple.Create(new List<T1>(), new List<T2>(), new List<T3>(), new List<T4>(), new List<T5>());
             var ret1 = new List<T1>();
             var type1 = typeof(T1);
             string flag1 = null;
@@ -437,8 +457,8 @@ namespace FreeSql.Internal.CommonProvider
                         break;
                 }
                 return Task.FromResult(false);
-            }, cmdType, cmdText, cmdParms);
-            return NaviteTuple.Create(ret1, ret2, ret3, ret4, ret5);
+            }, null, cmdType, cmdText, cmdParms);
+            return NativeTuple.Create(ret1, ret2, ret3, ret4, ret5);
         }
         #endregion
 
@@ -447,8 +467,8 @@ namespace FreeSql.Internal.CommonProvider
         public Task ExecuteReaderAsync(DbConnection connection, DbTransaction transaction, Func<FetchCallbackArgs<DbDataReader>, Task> fetchHandler, string cmdText, object parms = null) => ExecuteReaderAsync(connection, transaction, fetchHandler, CommandType.Text, cmdText, GetDbParamtersByObject(cmdText, parms));
         public Task ExecuteReaderAsync(Func<FetchCallbackArgs<DbDataReader>, Task> fetchHandler, CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => ExecuteReaderAsync(null, null, fetchHandler, cmdType, cmdText, cmdParms);
         public Task ExecuteReaderAsync(DbTransaction transaction, Func<FetchCallbackArgs<DbDataReader>, Task> fetchHandler, CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => ExecuteReaderAsync(null, transaction, fetchHandler, cmdType, cmdText, cmdParms);
-        public Task ExecuteReaderAsync(DbConnection connection, DbTransaction transaction, Func<FetchCallbackArgs<DbDataReader>, Task> fetchHandler, CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => ExecuteReaderMultipleAsync(1, connection, transaction, (fetch, result) => fetchHandler(fetch), cmdType, cmdText, cmdParms);
-        async Task ExecuteReaderMultipleAsync(int multipleResult, DbConnection connection, DbTransaction transaction, Func<FetchCallbackArgs<DbDataReader>, int, Task> fetchHandler, CommandType cmdType, string cmdText, params DbParameter[] cmdParms)
+        public Task ExecuteReaderAsync(DbConnection connection, DbTransaction transaction, Func<FetchCallbackArgs<DbDataReader>, Task> fetchHandler, CommandType cmdType, string cmdText, params DbParameter[] cmdParms) => ExecuteReaderMultipleAsync(1, connection, transaction, (fetch, result) => fetchHandler(fetch), null, cmdType, cmdText, cmdParms);
+        async Task ExecuteReaderMultipleAsync(int multipleResult, DbConnection connection, DbTransaction transaction, Func<FetchCallbackArgs<DbDataReader>, int, Task> fetchHandler, Action<DbDataReader, int> schemaHandler, CommandType cmdType, string cmdText, params DbParameter[] cmdParms)
         {
             if (string.IsNullOrEmpty(cmdText)) return;
             var dt = DateTime.Now;
@@ -511,7 +531,7 @@ namespace FreeSql.Internal.CommonProvider
                         LoggerException(pool, pc, new Exception($"连接失败，准备切换其他可用服务器"), dt, logtxt, false);
                         pc.cmd.Parameters.Clear();
                         if (DataType == DataType.Sqlite) pc.cmd.Dispose();
-                        await ExecuteReaderMultipleAsync(multipleResult, connection, transaction, fetchHandler, cmdType, cmdText, cmdParms);
+                        await ExecuteReaderMultipleAsync(multipleResult, connection, transaction, fetchHandler, schemaHandler, cmdType, cmdText, cmdParms);
                         return;
                     }
                 }
@@ -531,9 +551,15 @@ namespace FreeSql.Internal.CommonProvider
                     var fetch = new FetchCallbackArgs<DbDataReader> { Object = dr };
                     while (true)
                     {
+                        bool isfirst = true;
                         while (true)
                         {
                             bool isread = await dr.ReadAsync();
+                            if (schemaHandler != null && isfirst)
+                            {
+                                isfirst = false;
+                                schemaHandler(dr, resultIndex);
+                            }
                             if (isread == false) break;
 
                             if (fetchHandler != null)
@@ -599,19 +625,18 @@ namespace FreeSql.Internal.CommonProvider
             DataTable dt = null;
             await ExecuteReaderMultipleAsync(16, connection, transaction, async (fetch, result) =>
             {
-                if (ret.Tables.Count <= result)
-                {
-                    dt = ret.Tables.Add();
-                    for (var a = 0; a < fetch.Object.FieldCount; a++)
-                    {
-                        var name = fetch.Object.GetName(a);
-                        if (dt.Columns.Contains(name)) name = $"{name}_{Guid.NewGuid().ToString("N").Substring(0, 4)}";
-                        dt.Columns.Add(name, fetch.Object.GetFieldType(a));
-                    }
-                }
                 object[] values = new object[dt.Columns.Count];
                 for (int a = 0; a < values.Length; a++) if (!await fetch.Object.IsDBNullAsync(a)) values[a] = await fetch.Object.GetFieldValueAsync<object>(a);
                 dt.Rows.Add(values);
+            }, (dr, result) =>
+            {
+                dt = ret.Tables.Add();
+                for (var a = 0; a < dr.FieldCount; a++)
+                {
+                    var name = dr.GetName(a);
+                    if (dt.Columns.Contains(name)) name = $"{name}_{Guid.NewGuid().ToString("N").Substring(0, 4)}";
+                    dt.Columns.Add(name, dr.GetFieldType(a));
+                }
             }, cmdType, cmdText, cmdParms);
             return ret;
         }
@@ -623,18 +648,19 @@ namespace FreeSql.Internal.CommonProvider
         async public Task<DataTable> ExecuteDataTableAsync(DbConnection connection, DbTransaction transaction, CommandType cmdType, string cmdText, params DbParameter[] cmdParms)
         {
             var ret = new DataTable();
-            await ExecuteReaderAsync(connection, transaction, async fetch =>
+            await ExecuteReaderMultipleAsync(1, connection, transaction, async (fetch, result) =>
             {
-                if (ret.Columns.Count == 0)
-                    for (var a = 0; a < fetch.Object.FieldCount; a++)
-                    {
-                        var name = fetch.Object.GetName(a);
-                        if (ret.Columns.Contains(name)) name = $"{name}_{Guid.NewGuid().ToString("N").Substring(0, 4)}";
-                        ret.Columns.Add(name, fetch.Object.GetFieldType(a));
-                    }
                 object[] values = new object[ret.Columns.Count];
                 for (int a = 0; a < values.Length; a++) if (!await fetch.Object.IsDBNullAsync(a)) values[a] = await fetch.Object.GetFieldValueAsync<object>(a);
                 ret.Rows.Add(values);
+            }, (dr, result) =>
+            {
+                for (var a = 0; a < dr.FieldCount; a++)
+                {
+                    var name = dr.GetName(a);
+                    if (ret.Columns.Contains(name)) name = $"{name}_{Guid.NewGuid().ToString("N").Substring(0, 4)}";
+                    ret.Columns.Add(name, dr.GetFieldType(a));
+                }
             }, cmdType, cmdText, cmdParms);
             return ret;
         }

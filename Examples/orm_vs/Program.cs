@@ -50,6 +50,15 @@ namespace orm_vs
                 //optionsBuilder.UseMySql("Data Source=127.0.0.1;Port=3306;User ID=root;Password=root;Initial Catalog=cccddd;Charset=utf8;SslMode=none;Min Pool Size=21;Max Pool Size=21");
                 //optionsBuilder.UseNpgsql("Host=192.168.164.10;Port=5432;Username=postgres;Password=123456;Database=tedb;Pooling=true;Maximum Pool Size=21");
             }
+
+            protected override void OnModelCreating(ModelBuilder modelBuilder)
+            {
+                base.OnModelCreating(modelBuilder);
+
+                modelBuilder.Entity<Song>()
+                    .Property(a => a.create_time)
+                    .HasConversion(a => int.Parse(a.ToString()), a => new DateTime(a));
+            }
         }
 
         static void Main(string[] args)
@@ -368,6 +377,12 @@ namespace orm_vs
             fsql.Select<Song>().OrderBy(a => a.id).ToChunk(2, fetch =>
             {
                 testlist2.AddRange(fetch.Object);
+            });
+
+            var testlist22 = new List<object>();
+            fsql.Select<Song, Song_tag>().LeftJoin((a, b) => a.id == b.song_id).ToChunk((a, b) => new { a.title, a.create_time, b.tag_id }, 2, fetch =>
+            {
+                testlist22.AddRange(fetch.Object);
             });
 
             //sugar.Aop.OnLogExecuted = (s, e) =>

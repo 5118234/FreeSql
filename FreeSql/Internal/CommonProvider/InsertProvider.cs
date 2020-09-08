@@ -23,6 +23,7 @@ namespace FreeSql.Internal.CommonProvider
         public Dictionary<string, bool> _auditValueChangedDict = new Dictionary<string, bool>(StringComparer.CurrentCultureIgnoreCase);
         public TableInfo _table;
         public Func<string, string> _tableRule;
+        public string _noneParameterFlag = "c";
         public bool _noneParameter, _insertIdentity;
         public int _batchValuesLimit, _batchParameterLimit;
         public bool _batchAutoTransaction = true;
@@ -146,32 +147,32 @@ namespace FreeSql.Internal.CommonProvider
                 throw new Exception($"操作的数据类型({data.GetType().DisplayCsharp()}) 与 AsType({table.Type.DisplayCsharp()}) 不一致，请检查。");
             foreach (var col in table.Columns.Values)
             {
-                object val = col.GetMapValue(data);
+                object val = col.GetValue(data);
                 if (orm.Aop.AuditValueHandler != null)
                 {
                     var auditArgs = new Aop.AuditValueEventArgs(Aop.AuditValueType.Insert, col, table.Properties[col.CsName], val);
                     orm.Aop.AuditValueHandler(sender, auditArgs);
-                    if (auditArgs.IsChanged)
+                    if (auditArgs.ValueIsChanged)
                     {
-                        col.SetMapValue(data, val = auditArgs.Value);
+                        col.SetValue(data, val = auditArgs.Value);
                         if (changedDict != null && changedDict.ContainsKey(col.Attribute.Name) == false)
                             changedDict.Add(col.Attribute.Name, true);
                     }
                 }
                 if (col.Attribute.IsPrimary)
                 {
+                    val = col.GetDbValue(data);
                     if (col.Attribute.MapType.NullableTypeOrThis() == typeof(Guid) && (val == null || (Guid)val == Guid.Empty))
-                        col.SetMapValue(data, val = FreeUtil.NewMongodbId());
+                        col.SetValue(data, val = FreeUtil.NewMongodbId());
                     else if (col.CsType.NullableTypeOrThis() == typeof(Guid))
                     {
-                        var guidVal = orm.GetEntityValueWithPropertyName(table.Type, data, col.CsName);
-                        if (guidVal == null || (Guid)guidVal == Guid.Empty)
-                        {
-                            orm.SetEntityValueWithPropertyName(table.Type, data, col.CsName, FreeUtil.NewMongodbId());
-                            val = col.GetMapValue(data);
-                        }
+                        val = col.GetValue(data);
+                        if (val == null || (Guid)val == Guid.Empty)
+                            col.SetValue(data, val = FreeUtil.NewMongodbId());
                     }
                 }
+                if (val == null && col.Attribute.MapType == typeof(string) && col.Attribute.IsNullable == false)
+                    col.SetValue(data, val = "");
             }
         }
 
@@ -218,7 +219,10 @@ namespace FreeSql.Internal.CommonProvider
                 return ret;
             }
             if (_transaction == null)
-                this.WithTransaction(_orm.Ado.TransactionCurrentThread);
+            {
+                var threadTransaction = _orm.Ado.TransactionCurrentThread;
+                if (threadTransaction != null) this.WithTransaction(threadTransaction);
+            }
 
             var before = new Aop.TraceBeforeEventArgs("SplitExecuteAffrows", null);
             _orm.Aop.TraceBeforeHandler?.Invoke(this, before);
@@ -236,6 +240,7 @@ namespace FreeSql.Internal.CommonProvider
                 }
                 else
                 {
+                    if (_orm.Ado.MasterPool == null) throw new Exception("Ado.MasterPool 值为 null，该操作无法自启用事务，请显式传递【事务对象】解决");
                     using (var conn = _orm.Ado.MasterPool.Get())
                     {
                         _transaction = conn.Value.BeginTransaction();
@@ -293,7 +298,10 @@ namespace FreeSql.Internal.CommonProvider
                 return ret;
             }
             if (_transaction == null)
-                this.WithTransaction(_orm.Ado.TransactionCurrentThread);
+            {
+                var threadTransaction = _orm.Ado.TransactionCurrentThread;
+                if (threadTransaction != null) this.WithTransaction(threadTransaction);
+            }
 
             var before = new Aop.TraceBeforeEventArgs("SplitExecuteIdentity", null);
             _orm.Aop.TraceBeforeHandler?.Invoke(this, before);
@@ -312,6 +320,7 @@ namespace FreeSql.Internal.CommonProvider
                 }
                 else
                 {
+                    if (_orm.Ado.MasterPool == null) throw new Exception("Ado.MasterPool 值为 null，该操作无法自启用事务，请显式传递【事务对象】解决");
                     using (var conn = _orm.Ado.MasterPool.Get())
                     {
                         _transaction = conn.Value.BeginTransaction();
@@ -370,7 +379,10 @@ namespace FreeSql.Internal.CommonProvider
                 return ret;
             }
             if (_transaction == null)
-                this.WithTransaction(_orm.Ado.TransactionCurrentThread);
+            {
+                var threadTransaction = _orm.Ado.TransactionCurrentThread;
+                if (threadTransaction != null) this.WithTransaction(threadTransaction);
+            }
 
             var before = new Aop.TraceBeforeEventArgs("SplitExecuteInserted", null);
             _orm.Aop.TraceBeforeHandler?.Invoke(this, before);
@@ -388,6 +400,7 @@ namespace FreeSql.Internal.CommonProvider
                 }
                 else
                 {
+                    if (_orm.Ado.MasterPool == null) throw new Exception("Ado.MasterPool 值为 null，该操作无法自启用事务，请显式传递【事务对象】解决");
                     using (var conn = _orm.Ado.MasterPool.Get())
                     {
                         _transaction = conn.Value.BeginTransaction();
@@ -547,9 +560,10 @@ namespace FreeSql.Internal.CommonProvider
                         sb.Append(col.DbInsertValue);
                     else
                     {
-                        object val = col.GetMapValue(d);
+                        object val = col.GetDbValue(d);
+                        if (val == null && col.Attribute.IsNullable == false) val = col.CsType == typeof(string) ? "" : Utils.GetDataReaderValue(col.CsType.NullableTypeOrThis(), null);//#384
                         if (_noneParameter)
-                            sb.Append(_commonUtils.GetNoneParamaterSqlValue(specialParams, col.Attribute.MapType, val));
+                            sb.Append(_commonUtils.GetNoneParamaterSqlValue(specialParams, _noneParameterFlag, col.Attribute.MapType, val));
                         else
                         {
                             sb.Append(_commonUtils.QuoteWriteParamter(col.Attribute.MapType, _commonUtils.QuoteParamterName($"{col.CsName}_{didx}")));
@@ -562,8 +576,7 @@ namespace FreeSql.Internal.CommonProvider
                 onrow?.Invoke(d, didx, sb);
                 ++didx;
             }
-            if (_noneParameter && specialParams.Any())
-                _params = specialParams.ToArray();
+            if (_noneParameter && specialParams.Any()) _params = specialParams.ToArray();
             return sb.ToString();
         }
 
@@ -571,13 +584,13 @@ namespace FreeSql.Internal.CommonProvider
         {
             var dt = new DataTable();
             dt.TableName = TableRuleInvoke();
-            var dtCols = new List<NaviteTuple<ColumnInfo, Type, bool>>();
+            var dtCols = new List<NativeTuple<ColumnInfo, Type, bool>>();
             foreach (var col in _table.ColumnsByPosition)
             {
                 if (col.Attribute.IsIdentity && _insertIdentity == false) continue;
                 if (col.Attribute.IsIdentity == false && _ignore.ContainsKey(col.Attribute.Name)) continue;
                 dt.Columns.Add(col.Attribute.Name, col.Attribute.MapType.NullableTypeOrThis());
-                dtCols.Add(NaviteTuple.Create(col, col.Attribute.MapType.NullableTypeOrThis(), col.Attribute.MapType.IsNullableType()));
+                dtCols.Add(NativeTuple.Create(col, col.Attribute.MapType.NullableTypeOrThis(), col.Attribute.MapType.IsNullableType()));
             }
             if (dt.Columns.Count == 0) return dt;
             var didx = 0;
@@ -587,7 +600,7 @@ namespace FreeSql.Internal.CommonProvider
                 var rowIndex = 0;
                 foreach (var col in dtCols)
                 {
-                    var val = col.Item1.GetMapValue(d);
+                    var val = col.Item1.GetDbValue(d);
                     if (col.Item3 == true)
                     {
                         //if (val == null) throw new Exception($"[{didx}].{col.Item1.CsName} 值不可为 null；DataTable 限制不可使用 int?/long? 可空类型，IInsert.ToDataTable 将映射成 int/long，因此不可接受 null 值");

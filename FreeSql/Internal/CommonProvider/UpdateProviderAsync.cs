@@ -23,12 +23,16 @@ namespace FreeSql.Internal.CommonProvider
             var ret = 0;
             if (ss.Length <= 1)
             {
+                if (_source?.Any() == true) _batchProgress?.Invoke(new BatchProgressStatus<T1>(_source, 1, 1));
                 ret = await this.RawExecuteAffrowsAsync();
                 ClearData();
                 return ret;
             }
             if (_transaction == null)
-                this.WithTransaction(_orm.Ado.TransactionCurrentThread);
+            {
+                var threadTransaction = _orm.Ado.TransactionCurrentThread;
+                if (threadTransaction != null) this.WithTransaction(threadTransaction);
+            }
 
             var before = new Aop.TraceBeforeEventArgs("SplitExecuteAffrowsAsync", null);
             _orm.Aop.TraceBeforeHandler?.Invoke(this, before);
@@ -40,11 +44,13 @@ namespace FreeSql.Internal.CommonProvider
                     for (var a = 0; a < ss.Length; a++)
                     {
                         _source = ss[a];
+                        _batchProgress?.Invoke(new BatchProgressStatus<T1>(_source, a + 1, ss.Length));
                         ret += await this.RawExecuteAffrowsAsync();
                     }
                 }
                 else
                 {
+                    if (_orm.Ado.MasterPool == null) throw new Exception("Ado.MasterPool 值为 null，该操作无法自启用事务，请显式传递【事务对象】解决");
                     using (var conn = await _orm.Ado.MasterPool.GetAsync())
                     {
                         _transaction = conn.Value.BeginTransaction();
@@ -55,6 +61,7 @@ namespace FreeSql.Internal.CommonProvider
                             for (var a = 0; a < ss.Length; a++)
                             {
                                 _source = ss[a];
+                                _batchProgress?.Invoke(new BatchProgressStatus<T1>(_source, a + 1, ss.Length));
                                 ret += await this.RawExecuteAffrowsAsync();
                             }
                             _transaction.Commit();
@@ -89,12 +96,16 @@ namespace FreeSql.Internal.CommonProvider
             var ret = new List<T1>();
             if (ss.Length <= 1)
             {
+                if (_source?.Any() == true) _batchProgress?.Invoke(new BatchProgressStatus<T1>(_source, 1, 1));
                 ret = await this.RawExecuteUpdatedAsync();
                 ClearData();
                 return ret;
             }
             if (_transaction == null)
-                this.WithTransaction(_orm.Ado.TransactionCurrentThread);
+            {
+                var threadTransaction = _orm.Ado.TransactionCurrentThread;
+                if (threadTransaction != null) this.WithTransaction(threadTransaction);
+            }
 
             var before = new Aop.TraceBeforeEventArgs("SplitExecuteUpdatedAsync", null);
             _orm.Aop.TraceBeforeHandler?.Invoke(this, before);
@@ -105,12 +116,14 @@ namespace FreeSql.Internal.CommonProvider
                 {
                     for (var a = 0; a < ss.Length; a++)
                     {
-                        _source = ss[a];
+                        _source = ss[a]; 
+                        _batchProgress?.Invoke(new BatchProgressStatus<T1>(_source, a + 1, ss.Length));
                         ret.AddRange(await this.RawExecuteUpdatedAsync());
                     }
                 }
                 else
                 {
+                    if (_orm.Ado.MasterPool == null) throw new Exception("Ado.MasterPool 值为 null，该操作无法自启用事务，请显式传递【事务对象】解决");
                     using (var conn = await _orm.Ado.MasterPool.GetAsync())
                     {
                         _transaction = conn.Value.BeginTransaction();
@@ -121,6 +134,7 @@ namespace FreeSql.Internal.CommonProvider
                             for (var a = 0; a < ss.Length; a++)
                             {
                                 _source = ss[a];
+                                _batchProgress?.Invoke(new BatchProgressStatus<T1>(_source, a + 1, ss.Length));
                                 ret.AddRange(await this.RawExecuteUpdatedAsync());
                             }
                             _transaction.Commit();
@@ -162,7 +176,7 @@ namespace FreeSql.Internal.CommonProvider
             try
             {
                 affrows = await _orm.Ado.ExecuteNonQueryAsync(_connection, _transaction, CommandType.Text, sql, dbParms);
-                ValidateVersionAndThrow(affrows);
+                ValidateVersionAndThrow(affrows, sql, dbParms);
             }
             catch (Exception ex)
             {

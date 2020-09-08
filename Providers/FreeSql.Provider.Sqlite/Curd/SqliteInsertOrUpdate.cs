@@ -35,6 +35,7 @@ namespace FreeSql.Sqlite.Curd
                     .WithConnection(_connection)
                     .WithTransaction(_transaction)
                     .NoneParameter(true) as Internal.CommonProvider.InsertProvider<T1>;
+                insert._noneParameterFlag = flagInsert ? "c" : "cu";
                 insert._source = data;
 
                 string sql = "";
@@ -44,6 +45,7 @@ namespace FreeSql.Sqlite.Curd
                     insert.InsertIdentity();
                     if (_doNothing == false)
                     {
+                        if (_updateIgnore.Any()) throw new Exception($"fsql.InsertOrUpdate Sqlite 无法完成 UpdateColumns 操作");
                         sql = insert.ToSql();
                         if (sql?.StartsWith("INSERT INTO ") == true)
                             sql = $"REPLACE INTO {sql.Substring("INSERT INTO ".Length)}";

@@ -759,7 +759,7 @@ namespace FreeSql.Tests.Sqlite
                 {
                     b.Key.Title,
                     b.Key.yyyy,
-
+                    b.Key,
                     cou = b.Count(),
                     sum2 = b.Sum(b.Value.TypeGuid)
                 });
@@ -773,7 +773,23 @@ namespace FreeSql.Tests.Sqlite
                     sum2 = b.Sum(b.Value.TypeGuid),
                     sum3 = b.Sum(b.Value.Type.Parent.Id)
                 });
+
+
+
+            var aggsql4 = select
+                .GroupBy(a => a.Title)
+                .ToList(b => new TestGroupByDto01
+                {
+                    Name = b.Key,
+                    TotalCount = b.Count()
+                });
         }
+        class TestGroupByDto01
+        {
+            public string Name { get; set; }
+            public int TotalCount { get; set; }
+        }
+
         [Fact]
         public void ToAggregate()
         {
@@ -1098,33 +1114,89 @@ WHERE (((cast(a.""Id"" as character)) in (SELECT b.""Title""
                 .IncludeMany(a => a.childs.Where(m3 => m3.model2111Idaaa == a.model2id))
                 .Where(a => a.model2id <= model1.id)
                 .ToList();
+            var t001 = g.sqlite.Select<TestInclude_OneToManyModel2>()
+                .IncludeMany(a => a.childs.Where(m3 => m3.model2111Idaaa == a.model2id))
+                .Where(a => a.model2id <= model1.id)
+                .ToList(a => new
+                {
+                    a.model1.id,
+                    a.childs,
+                    childs2 = a.childs
+                });
 
             var t1 = g.sqlite.Select<TestInclude_OneToManyModel1>()
                 .IncludeMany(a => a.model2.childs.Where(m3 => m3.model2111Idaaa == a.model2.model2id))
                 .Where(a => a.id <= model1.id)
                 .ToList();
+            var t111 = g.sqlite.Select<TestInclude_OneToManyModel1>()
+                .IncludeMany(a => a.model2.childs.Where(m3 => m3.model2111Idaaa == a.model2.model2id))
+                .Where(a => a.id <= model1.id)
+                .ToList(a => new
+                {
+                    a.id,
+                    a.model2.childs,
+                    childs2 = a.model2.childs
+                });
 
             var t2 = g.sqlite.Select<TestInclude_OneToManyModel1>()
                 .IncludeMany(a => a.model2.childs.Where(m3 => m3.model2111Idaaa == a.model2.model2id),
                     then => then.IncludeMany(m3 => m3.childs2.Where(m4 => m4.model3333Id333 == m3.id)))
                 .Where(a => a.id <= model1.id)
                 .ToList();
+            var t222 = g.sqlite.Select<TestInclude_OneToManyModel1>()
+                .IncludeMany(a => a.model2.childs.Where(m3 => m3.model2111Idaaa == a.model2.model2id),
+                    then => then.IncludeMany(m3 => m3.childs2.Where(m4 => m4.model3333Id333 == m3.id)))
+                .Where(a => a.id <= model1.id)
+                .ToList(a => new
+                {
+                    a.id,
+                    a.model2.childs,
+                    childs2 = a.model2.childs
+                });
 
             var t00 = g.sqlite.Select<TestInclude_OneToManyModel2>()
                 .IncludeMany(a => a.childs.Take(1).Where(m3 => m3.model2111Idaaa == a.model2id))
                 .Where(a => a.model2id <= model1.id)
                 .ToList();
+            var t0001 = g.sqlite.Select<TestInclude_OneToManyModel2>()
+                .IncludeMany(a => a.childs.Take(1).Where(m3 => m3.model2111Idaaa == a.model2id))
+                .Where(a => a.model2id <= model1.id)
+                .ToList(a => new
+                {
+                    a.model1.id,
+                    a.childs,
+                    childs2 = a.childs
+                });
 
             var t11 = g.sqlite.Select<TestInclude_OneToManyModel1>()
                 .IncludeMany(a => a.model2.childs.Take(1).Where(m3 => m3.model2111Idaaa == a.model2.model2id))
                 .Where(a => a.id <= model1.id)
                 .ToList();
+            var t1111 = g.sqlite.Select<TestInclude_OneToManyModel1>()
+                 .IncludeMany(a => a.model2.childs.Take(1).Where(m3 => m3.model2111Idaaa == a.model2.model2id))
+                 .Where(a => a.id <= model1.id)
+                 .ToList(a => new
+                 {
+                     a.id,
+                     a.model2.childs,
+                     childs2 = a.model2.childs
+                 });
 
             var t22 = g.sqlite.Select<TestInclude_OneToManyModel1>()
                 .IncludeMany(a => a.model2.childs.Take(1).Where(m3 => m3.model2111Idaaa == a.model2.model2id),
                     then => then.IncludeMany(m3 => m3.childs2.Take(2).Where(m4 => m4.model3333Id333 == m3.id)))
                 .Where(a => a.id <= model1.id)
                 .ToList();
+            var t2222 = g.sqlite.Select<TestInclude_OneToManyModel1>()
+                .IncludeMany(a => a.model2.childs.Take(1).Where(m3 => m3.model2111Idaaa == a.model2.model2id),
+                    then => then.IncludeMany(m3 => m3.childs2.Take(2).Where(m4 => m4.model3333Id333 == m3.id)))
+                .Where(a => a.id <= model1.id)
+                .ToList(a => new
+                {
+                    a.id,
+                    a.model2.childs,
+                    childs2 = a.model2.childs
+                });
 
             //---- Select ----
 
@@ -1132,33 +1204,77 @@ WHERE (((cast(a.""Id"" as character)) in (SELECT b.""Title""
                 .IncludeMany(a => a.childs.Where(m3 => m3.model2111Idaaa == a.model2id).Select(m3 => new TestInclude_OneToManyModel3 {  id = m3.id }))
                 .Where(a => a.model2id <= model1.id)
                 .ToList();
+            var at001 = g.sqlite.Select<TestInclude_OneToManyModel2>()
+                .IncludeMany(a => a.childs.Where(m3 => m3.model2111Idaaa == a.model2id).Select(m3 => new TestInclude_OneToManyModel3 { id = m3.id }))
+                .Where(a => a.model2id <= model1.id)
+                .ToList(a => new
+                {
+                    a.model2id, a.childs, childs2 = a.childs
+                });
 
             var at1 = g.sqlite.Select<TestInclude_OneToManyModel1>()
                 .IncludeMany(a => a.model2.childs.Where(m3 => m3.model2111Idaaa == a.model2.model2id).Select(m3 => new TestInclude_OneToManyModel3 { id = m3.id }))
                 .Where(a => a.id <= model1.id)
-                .ToList();
+                .ToList(); 
+            var at111 = g.sqlite.Select<TestInclude_OneToManyModel1>()
+                 .IncludeMany(a => a.model2.childs.Where(m3 => m3.model2111Idaaa == a.model2.model2id).Select(m3 => new TestInclude_OneToManyModel3 { id = m3.id }))
+                 .Where(a => a.id <= model1.id)
+                 .ToList(a => new
+                 {
+                     a.id, a.model2.childs, childs2 = a.model2.childs
+                 });
 
             var at2 = g.sqlite.Select<TestInclude_OneToManyModel1>()
                 .IncludeMany(a => a.model2.childs.Where(m3 => m3.model2111Idaaa == a.model2.model2id).Select(m3 => new TestInclude_OneToManyModel3 { id = m3.id }),
                     then => then.IncludeMany(m3 => m3.childs2.Where(m4 => m4.model3333Id333 == m3.id).Select(m4 => new TestInclude_OneToManyModel4 { id = m4.id })))
                 .Where(a => a.id <= model1.id)
                 .ToList();
+            var at2222 = g.sqlite.Select<TestInclude_OneToManyModel1>()
+                .IncludeMany(a => a.model2.childs.Where(m3 => m3.model2111Idaaa == a.model2.model2id).Select(m3 => new TestInclude_OneToManyModel3 { id = m3.id }),
+                    then => then.IncludeMany(m3 => m3.childs2.Where(m4 => m4.model3333Id333 == m3.id).Select(m4 => new TestInclude_OneToManyModel4 { id = m4.id })))
+                .Where(a => a.id <= model1.id)
+                .ToList(a => new
+                {
+                    a.id, a.model2.childs, childs2 = a.model2.childs
+                });
 
             var at00 = g.sqlite.Select<TestInclude_OneToManyModel2>()
                 .IncludeMany(a => a.childs.Take(1).Where(m3 => m3.model2111Idaaa == a.model2id).Select(m3 => new TestInclude_OneToManyModel3 { id = m3.id }))
                 .Where(a => a.model2id <= model1.id)
                 .ToList();
+            var at011 = g.sqlite.Select<TestInclude_OneToManyModel2>()
+                .IncludeMany(a => a.childs.Take(1).Where(m3 => m3.model2111Idaaa == a.model2id).Select(m3 => new TestInclude_OneToManyModel3 { id = m3.id }))
+                .Where(a => a.model2id <= model1.id)
+                .ToList(a => new
+                {
+                    a.model2id, a.childs, childs2 = a.childs
+                });
 
             var at11 = g.sqlite.Select<TestInclude_OneToManyModel1>()
                 .IncludeMany(a => a.model2.childs.Take(1).Where(m3 => m3.model2111Idaaa == a.model2.model2id).Select(m3 => new TestInclude_OneToManyModel3 { id = m3.id }))
                 .Where(a => a.id <= model1.id)
                 .ToList();
+            var at1112 = g.sqlite.Select<TestInclude_OneToManyModel1>()
+                .IncludeMany(a => a.model2.childs.Take(1).Where(m3 => m3.model2111Idaaa == a.model2.model2id).Select(m3 => new TestInclude_OneToManyModel3 { id = m3.id }))
+                .Where(a => a.id <= model1.id)
+                .ToList(a => new
+                 {
+                     a.id, a.model2.childs, childs2 = a.model2.childs
+                 });
 
             var at22 = g.sqlite.Select<TestInclude_OneToManyModel1>()
                 .IncludeMany(a => a.model2.childs.Take(1).Where(m3 => m3.model2111Idaaa == a.model2.model2id).Select(m3 => new TestInclude_OneToManyModel3 { id = m3.id }),
                     then => then.IncludeMany(m3 => m3.childs2.Take(2).Where(m4 => m4.model3333Id333 == m3.id).Select(m4 => new TestInclude_OneToManyModel4 { id = m4.id })))
                 .Where(a => a.id <= model1.id)
                 .ToList();
+            var at2223 = g.sqlite.Select<TestInclude_OneToManyModel1>()
+                .IncludeMany(a => a.model2.childs.Take(1).Where(m3 => m3.model2111Idaaa == a.model2.model2id).Select(m3 => new TestInclude_OneToManyModel3 { id = m3.id }),
+                    then => then.IncludeMany(m3 => m3.childs2.Take(2).Where(m4 => m4.model3333Id333 == m3.id).Select(m4 => new TestInclude_OneToManyModel4 { id = m4.id })))
+                .Where(a => a.id <= model1.id)
+                .ToList(a => new
+                {
+                    a.id, a.model2.childs, childs2 = a.model2.childs
+                });
         }
 
         public class TestInclude_OneToManyModel11
@@ -1541,6 +1657,15 @@ WHERE (((cast(a.""Id"" as character)) in (SELECT b.""Title""
                 .IncludeMany(a => a.Tag.Songs.Take(1).Select(b => new Song { Id = b.Id, Title = b.Title }))
                 .Where(a => a.Tag.Id == tag1.Id || a.Tag.Id == tag2.Id)
                 .ToList(true);
+
+            var asongs2222 = g.sqlite.Select<Song>()
+               .IncludeMany(a => a.Tags.Select(b => new Tag { Id = b.Id, Name = b.Name }),
+                   then => then.IncludeMany(t => t.Songs.Select(b => new Song { Id = b.Id, Title = b.Title })))
+               .Where(a => a.Id == song1.Id || a.Id == song2.Id || a.Id == song3.Id)
+               .ToList(a => new
+               {
+                   a.Id, a.Is_deleted, a.Tags
+               });
         }
 
         [Fact]
@@ -1960,6 +2085,22 @@ WHERE (((cast(a.""Id"" as character)) in (SELECT b.""Title""
             Assert.Equal("中国[100000] -> 北京[110000]", t4[1].path);
             Assert.Equal("中国[100000] -> 北京[110000] -> 北京市[110100]", t4[2].path);
             Assert.Equal("中国[100000] -> 北京[110000] -> 东城区[110101]", t4[3].path);
+
+            var select = fsql.Select<VM_District_Child>()
+                .Where(a => a.Name == "中国")
+                .AsTreeCte()
+                //.OrderBy("a.cte_level desc") //递归层级
+                ;
+            // var list = select.ToList(); //自己调试看查到的数据
+            select.ToUpdate().Set(a => a.testint, 855).ExecuteAffrows();
+            Assert.Equal(855, fsql.Select<VM_District_Child>()
+                .Where(a => a.Name == "中国")
+                .AsTreeCte().Distinct().First(a => a.testint));
+
+            Assert.Equal(4, select.ToDelete().ExecuteAffrows());
+            Assert.False(fsql.Select<VM_District_Child>()
+                .Where(a => a.Name == "中国")
+                .AsTreeCte().Any());
         }
 
         [Table(Name = "D_District")]

@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Data.Common;
 using System.Drawing;
 using System.Linq;
 using System.Linq.Expressions;
@@ -16,6 +17,7 @@ using System.Threading;
 
 public static partial class FreeSqlGlobalExtensions
 {
+    #region Type 对象扩展方法
     static Lazy<Dictionary<Type, bool>> _dicIsNumberType = new Lazy<Dictionary<Type, bool>>(() => new Dictionary<Type, bool>
     {
         [typeof(sbyte)] = true,
@@ -44,7 +46,7 @@ public static partial class FreeSqlGlobalExtensions
     public static bool IsIntegerType(this Type that) => that == null ? false : (_dicIsNumberType.Value.TryGetValue(that, out var tryval) ? tryval : false);
     public static bool IsNumberType(this Type that) => that == null ? false : _dicIsNumberType.Value.ContainsKey(that);
     public static bool IsNullableType(this Type that) => that.IsArray == false && that?.FullName.StartsWith("System.Nullable`1[") == true;
-    public static bool IsAnonymousType(this Type that) => that?.FullName.StartsWith("<>f__AnonymousType") == true;
+    public static bool IsAnonymousType(this Type that) => that == null ? false : (that.FullName.StartsWith("<>f__AnonymousType") || that.FullName.StartsWith("VB$AnonymousType"));
     public static bool IsArrayOrList(this Type that) => that == null ? false : (that.IsArray || typeof(IList).IsAssignableFrom(that));
     public static Type NullableTypeOrThis(this Type that) => that?.IsNullableType() == true ? that.GetGenericArguments().First() : that;
     internal static string NotNullAndConcat(this string that, params object[] args) => string.IsNullOrEmpty(that) ? null : string.Concat(new object[] { that }.Concat(args));
@@ -135,7 +137,7 @@ public static partial class FreeSqlGlobalExtensions
         if (ctorParms == null || ctorParms.Any() == false) return Activator.CreateInstance(that, true);
         return Activator.CreateInstance(that, ctorParms
             .Select(a => a.ParameterType.IsInterface || a.ParameterType.IsAbstract || a.ParameterType == typeof(string) || a.ParameterType.IsArray ?
-            null : 
+            null :
             Activator.CreateInstance(a.ParameterType, null)).ToArray());
     }
     internal static NewExpression InternalNewExpression(this Type that)
@@ -166,6 +168,7 @@ public static partial class FreeSqlGlobalExtensions
         }
         return dict;
     });
+    #endregion
 
     /// <summary>
     /// 测量两个经纬度的距离，返回单位：米
@@ -182,6 +185,7 @@ public static partial class FreeSqlGlobalExtensions
         return 2 * Math.Asin(Math.Sqrt(Math.Pow(Math.Sin((radLat1 - radLat2) / 2), 2) + Math.Cos(radLat1) * Math.Cos(radLat2) * Math.Pow(Math.Sin((radLng1 - radLng2) / 2), 2))) * 6378137;
     }
 
+    #region Enum 对象扩展方法
     static ConcurrentDictionary<Type, FieldInfo[]> _dicGetFields = new ConcurrentDictionary<Type, FieldInfo[]>();
     public static object GetEnum<T>(this IDataReader dr, int index)
     {
@@ -194,7 +198,6 @@ public static partial class FreeSqlGlobalExtensions
         }
         return null;
     }
-
     public static string ToDescriptionOrString(this Enum item)
     {
         string name = item.ToString();
@@ -217,6 +220,7 @@ public static partial class FreeSqlGlobalExtensions
         }
         return ret;
     }
+    #endregion
 
     /// <summary>
     /// 将 IEnumable&lt;T&gt; 转成 ISelect&lt;T&gt;，以便使用 FreeSql 的查询功能。此方法用于 Lambda 表达式中，快速进行集合导航的查询。
@@ -306,9 +310,9 @@ public static partial class FreeSqlGlobalExtensions
         {
             var tb = orm.CodeFirst.GetTableByEntity(typeof(T1));
             if (tb == null || tb.Primarys.Any() == false)
-                (orm.CodeFirst as FreeSql.Internal.CommonProvider.CodeFirstProvider)._dicSycedTryAdd(typeof(T1)); //._dicSyced.TryAdd(typeof(TReturn), true);
+                (orm.CodeFirst as CodeFirstProvider)._dicSycedTryAdd(typeof(T1)); //._dicSyced.TryAdd(typeof(TReturn), true);
         }
-        var select = orm.Select<T1>().IncludeMany(navigateSelector, then) as FreeSql.Internal.CommonProvider.Select1Provider<T1>;
+        var select = orm.Select<T1>().IncludeMany(navigateSelector, then) as Select1Provider<T1>;
         select.SetList(list);
         return list;
     }
@@ -322,9 +326,9 @@ public static partial class FreeSqlGlobalExtensions
         {
             var tb = orm.CodeFirst.GetTableByEntity(typeof(T1));
             if (tb == null || tb.Primarys.Any() == false)
-                (orm.CodeFirst as FreeSql.Internal.CommonProvider.CodeFirstProvider)._dicSycedTryAdd(typeof(T1)); //._dicSyced.TryAdd(typeof(TReturn), true);
+                (orm.CodeFirst as CodeFirstProvider)._dicSycedTryAdd(typeof(T1)); //._dicSyced.TryAdd(typeof(TReturn), true);
         }
-        var select = orm.Select<T1>().IncludeMany(navigateSelector, then) as FreeSql.Internal.CommonProvider.Select1Provider<T1>;
+        var select = orm.Select<T1>().IncludeMany(navigateSelector, then) as Select1Provider<T1>;
         await select.SetListAsync(list);
         return list;
     }
@@ -344,7 +348,7 @@ public static partial class FreeSqlGlobalExtensions
         var select = that as Select1Provider<T1>;
         var tb = select._tables[0].Table;
         var navs = tb.Properties.Select(a => tb.GetTableRef(a.Key, false))
-            .Where(a => a != null && 
+            .Where(a => a != null &&
                 a.RefType == FreeSql.Internal.Model.TableRefType.OneToMany &&
                 a.RefEntityType == tb.Type).ToArray();
 
@@ -426,6 +430,7 @@ public static partial class FreeSqlGlobalExtensions
             {
                 case DataType.PostgreSQL:
                 case DataType.OdbcPostgreSQL:
+                case DataType.KingbaseES:
                 case DataType.OdbcKingbaseES:
                 case DataType.ShenTong: //神通测试未通过
                 case DataType.SqlServer:
@@ -446,7 +451,7 @@ public static partial class FreeSqlGlobalExtensions
         var sql2InnerJoinOn = up == false ?
             string.Join(" and ", tbref.Columns.Select((a, z) => $"wct2.{select._commonUtils.QuoteSqlName(tbref.RefColumns[z].Attribute.Name)} = wct1.{select._commonUtils.QuoteSqlName(a.Attribute.Name)}")) :
             string.Join(" and ", tbref.Columns.Select((a, z) => $"wct2.{select._commonUtils.QuoteSqlName(a.Attribute.Name)} = wct1.{select._commonUtils.QuoteSqlName(tbref.RefColumns[z].Attribute.Name)}"));
-        
+
         var sql2ctePath = "";
         if (pathSelector != null)
         {
@@ -483,6 +488,7 @@ public static partial class FreeSqlGlobalExtensions
         {
             case DataType.PostgreSQL:
             case DataType.OdbcPostgreSQL:
+            case DataType.KingbaseES:
             case DataType.OdbcKingbaseES:
             case DataType.ShenTong: //神通测试未通过
             case DataType.MySql:
@@ -511,4 +517,5 @@ SELECT ");
         return newSelect;
     }
     #endregion
+
 }

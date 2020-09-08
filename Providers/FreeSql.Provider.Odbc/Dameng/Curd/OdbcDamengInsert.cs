@@ -66,9 +66,10 @@ namespace FreeSql.Odbc.Dameng
                         sb.Append(col.DbInsertValue);
                     else
                     {
-                        object val = col.GetMapValue(d);
+                        object val = col.GetDbValue(d);
+                        if (val == null && col.Attribute.IsNullable == false) val = col.CsType == typeof(string) ? "" : Utils.GetDataReaderValue(col.CsType.NullableTypeOrThis(), null);//#384
                         if (_noneParameter)
-                            sb.Append(_commonUtils.GetNoneParamaterSqlValue(specialParams, col.Attribute.MapType, val));
+                            sb.Append(_commonUtils.GetNoneParamaterSqlValue(specialParams, _noneParameterFlag, col.Attribute.MapType, val));
                         else
                         {
                             sb.Append(_commonUtils.QuoteWriteParamter(col.Attribute.MapType, _commonUtils.QuoteParamterName($"{col.CsName}_{didx}")));
@@ -80,6 +81,7 @@ namespace FreeSql.Odbc.Dameng
                 sb.Append(")");
                 ++didx;
             }
+            if (_noneParameter && specialParams.Any()) _params = specialParams.ToArray();
             if (_source.Count > 1) sb.Append("\r\n SELECT 1 FROM DUAL");
             return sb.ToString();
         }

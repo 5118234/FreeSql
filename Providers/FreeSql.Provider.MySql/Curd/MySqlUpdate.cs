@@ -52,7 +52,7 @@ namespace FreeSql.MySql.Curd
             try
             {
                 ret = _orm.Ado.Query<T1>(_table.TypeLazy ?? _table.Type, _connection, _transaction, CommandType.Text, sql, dbParms);
-                ValidateVersionAndThrow(ret.Count);
+                ValidateVersionAndThrow(ret.Count, sql, dbParms);
             }
             catch (Exception ex)
             {
@@ -90,7 +90,7 @@ namespace FreeSql.MySql.Curd
         {
             if (_table.Primarys.Length == 1)
             {
-                sb.Append(_commonUtils.FormatSql("{0}", _table.Primarys.First().GetMapValue(d)));
+                sb.Append(_commonUtils.FormatSql("{0}", _table.Primarys[0].GetDbValue(d)));
                 return;
             }
             sb.Append("CONCAT(");
@@ -98,7 +98,7 @@ namespace FreeSql.MySql.Curd
             foreach (var pk in _table.Primarys)
             {
                 if (pkidx > 0) sb.Append(", '+', ");
-                sb.Append(_commonUtils.FormatSql("{0}", pk.GetMapValue(d)));
+                sb.Append(_commonUtils.FormatSql("{0}", pk.GetDbValue(d)));
                 ++pkidx;
             }
             sb.Append(")");
@@ -133,7 +133,7 @@ namespace FreeSql.MySql.Curd
             try
             {
                 ret = await _orm.Ado.QueryAsync<T1>(_table.TypeLazy ?? _table.Type, _connection, _transaction, CommandType.Text, sql, dbParms);
-                ValidateVersionAndThrow(ret.Count);
+                ValidateVersionAndThrow(ret.Count, sql, dbParms);
             }
             catch (Exception ex)
             {

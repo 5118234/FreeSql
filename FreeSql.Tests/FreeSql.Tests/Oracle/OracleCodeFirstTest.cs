@@ -4,14 +4,81 @@ using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading;
 using Xunit;
 
 namespace FreeSql.Tests.Oracle
 {
     public class OracleCodeFirstTest
     {
+        [Fact]
+        public void StringNullToEmpty()
+        {
+            using (var fsql = new FreeSql.FreeSqlBuilder()
+                .UseConnectionString(FreeSql.DataType.Oracle, "user id=1user;password=123456;data source=//127.0.0.1:1521/XE;Pooling=true;Max Pool Size=5;min pool size=1")
+                .UseAutoSyncStructure(true)
+                //.UseGenerateCommandParameterWithLambda(true)
+                .UseLazyLoading(true)
+                .UseNameConvert(FreeSql.Internal.NameConvertType.ToUpper)
+                //.UseNoneCommandParameter(true)
+
+                .UseMonitorCommand(
+                    cmd => Trace.WriteLine("\r\nÏß³Ì" + Thread.CurrentThread.ManagedThreadId + ": " + cmd.CommandText) //¼àÌýSQLÃüÁî¶ÔÏó£¬ÔÚÖ´ÐÐÇ°
+                    //, (cmd, traceLog) => Console.WriteLine(traceLog)
+                    )
+                .Build())
+            {
+                var repo = fsql.GetRepository<TS_SL361, long>();
+
+                var item1 = new TS_SL361 { CreatorId = "" };
+                repo.Insert(item1);
+                var item2 = repo.Get(item1.Id);
+
+                Assert.Null(item2.CreatorId);
+
+                fsql.Aop.AuditDataReader += (_, e) =>
+                {
+                    if (e.DataReader.GetFieldType(e.Index) == typeof(string) && e.Value == DBNull.Value)
+                        e.Value = "";
+                };
+
+                item1 = new TS_SL361 { CreatorId = "" };
+                repo.Insert(item1);
+                item2 = repo.Get(item1.Id);
+
+                Assert.Equal(item1.CreatorId, item2.CreatorId);
+            }
+        }
+        class TS_SNTE
+        {
+            [Column(IsIdentity = true)]
+            public long Id { get; set; }
+            public string CreatorId { get; set; }
+        }
+
+        [Fact]
+        public void StringLength36()
+        {
+            var repo = g.oracle.GetRepository<TS_SL361, long>();
+
+            var item1 = new TS_SL361 { CreatorId = "xxx '123 " };
+            repo.Insert(item1);
+            var item2 = repo.Get(item1.Id);
+
+            Assert.Equal(item1.CreatorId, item2.CreatorId);
+        }
+        class TS_SL361
+        {
+            [Column(IsIdentity = true)]
+            public long Id { get; set; }
+            [Column(StringLength = 36)]
+            public string CreatorId { get; set; }
+        }
+
         [Fact]
         public void NClob_StringLength_1()
         {
@@ -25,8 +92,11 @@ namespace FreeSql.Tests.Oracle
 
             //NoneParameter
             item1 = new TS_NCLB02 { Data = str1 };
-            Assert.Throws<Exception>(() => g.oracle.Insert(item1).NoneParameter().ExecuteAffrows());
+            Assert.Equal(1, g.oracle.Insert(item1).NoneParameter().ExecuteAffrows());
             //Oracle.ManagedDataAccess.Client.OracleException:¡°ORA-01704: ×Ö·û´®ÎÄ×ÖÌ«³¤¡±
+
+            item2 = g.oracle.Select<TS_NCLB02>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(str1, item2.Data);
         }
         class TS_NCLB02
         {
@@ -48,8 +118,11 @@ namespace FreeSql.Tests.Oracle
 
             //NoneParameter
             item1 = new TS_NCLB01 { Data = str1 };
-            Assert.Throws<Exception>(() => g.oracle.Insert(item1).NoneParameter().ExecuteAffrows());
+            Assert.Equal(1, g.oracle.Insert(item1).NoneParameter().ExecuteAffrows());
             //Oracle.ManagedDataAccess.Client.OracleException:¡°ORA-01704: ×Ö·û´®ÎÄ×ÖÌ«³¤¡±
+
+            item2 = g.oracle.Select<TS_NCLB01>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(str1, item2.Data);
         }
         class TS_NCLB01
         {
@@ -70,8 +143,11 @@ namespace FreeSql.Tests.Oracle
 
             //NoneParameter
             item1 = new TS_CLB01 { Data = str1 };
-            Assert.Throws<Exception>(() => g.oracle.Insert(item1).NoneParameter().ExecuteAffrows());
+            Assert.Equal(1, g.oracle.Insert(item1).NoneParameter().ExecuteAffrows());
             //Oracle.ManagedDataAccess.Client.OracleException:¡°ORA-01704: ×Ö·û´®ÎÄ×ÖÌ«³¤¡±
+
+            item2 = g.oracle.Select<TS_CLB01>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(str1, item2.Data);
         }
         class TS_CLB01
         {
@@ -96,8 +172,21 @@ namespace FreeSql.Tests.Oracle
 
             //NoneParameter
             item1 = new TS_BLB01 { Data = data1 };
-            Assert.Throws<Exception>(() => g.oracle.Insert(item1).NoneParameter().ExecuteAffrows());
+            Assert.Equal(1, g.oracle.Insert(item1).NoneParameter().ExecuteAffrows());
             //Oracle.ManagedDataAccess.Client.OracleException:¡°ORA-01704: ×Ö·û´®ÎÄ×ÖÌ«³¤¡±
+
+            item2 = g.oracle.Select<TS_BLB01>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(item1.Data.Length, item2.Data.Length);
+
+            str2 = Encoding.UTF8.GetString(item2.Data);
+            Assert.Equal(str1, str2);
+
+            Assert.Equal(1, g.oracle.InsertOrUpdate<TS_BLB01>().SetSource(new TS_BLB01 { Data = data1 }).ExecuteAffrows());
+            item2 = g.oracle.Select<TS_BLB01>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(item1.Data.Length, item2.Data.Length);
+
+            str2 = Encoding.UTF8.GetString(item2.Data);
+            Assert.Equal(str1, str2);
         }
         class TS_BLB01
         {

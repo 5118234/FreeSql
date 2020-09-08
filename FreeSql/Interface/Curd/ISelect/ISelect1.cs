@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FreeSql.Internal.Model;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -56,6 +57,14 @@ namespace FreeSql
         /// <typeparam name="TDto"></typeparam>
         /// <returns></returns>
         List<TDto> ToList<TDto>();
+        /// <summary>
+        /// 执行SQL查询，分块返回数据，可减少内存开销。比如读取10万条数据，每次返回100条处理。
+        /// </summary>
+        /// <typeparam name="TReturn">返回类型</typeparam>
+        /// <param name="select">选择列</param>
+        /// <param name="size">数据块的大小</param>
+        /// <param name="done">处理数据块</param>
+        void ToChunk<TReturn>(Expression<Func<T1, TReturn>> select, int size, Action<FetchCallbackArgs<List<TReturn>>> done);
 
         /// <summary>
         /// 执行SQL查询，返回指定字段的记录的第一条记录，记录不存在时返回 TReturn 默认值
@@ -101,6 +110,17 @@ namespace FreeSql
         /// <param name="select"></param>
         /// <returns></returns>
         TReturn ToAggregate<TReturn>(Expression<Func<ISelectGroupingAggregate<T1>, TReturn>> select);
+        /// <summary>
+        /// 执行SQL查询，返回指定字段的聚合结果给 output 参数<para></para>
+        /// fsql.Select&lt;T&gt;()<para></para>
+        /// .Aggregate(a =&gt; new { count = a.Count, sum = a.Sum(a.Key.Price) }, out var agg)<para></para>
+        /// .Page(1, 10).ToList();
+        /// </summary>
+        /// <typeparam name="TReturn"></typeparam>
+        /// <param name="select"></param>
+        /// <param name="result"></param>
+        /// <returns></returns>
+        ISelect<T1> Aggregate<TReturn>(Expression<Func<ISelectGroupingAggregate<T1>, TReturn>> select, out TReturn result);
 
         /// <summary>
         /// 求和
@@ -337,6 +357,15 @@ namespace FreeSql
         /// <returns></returns>
         ISelect<T1> OrderBy<TMember>(bool condition, Expression<Func<T1, TMember>> column);
         /// <summary>
+        /// 按列排序，OrderByIf(true, a => a.Time)
+        /// </summary>
+        /// <typeparam name="TMember"></typeparam>
+        /// <param name="condition">true 时生效</param>
+        /// <param name="column"></param>
+        /// <param name="descending">true: DESC, false: ASC</param>
+        /// <returns></returns>
+        ISelect<T1> OrderByIf<TMember>(bool condition, Expression<Func<T1, TMember>> column, bool descending = false);
+        /// <summary>
         /// 按列倒向排序，OrderByDescending(a => a.Time)
         /// </summary>
         /// <param name="column">列</param>
@@ -373,10 +402,13 @@ namespace FreeSql
 
         /// <summary>
         /// 实现 select .. from ( select ... from t ) a 这样的功能<para></para>
-        /// 使用 AsTable 方法也可以达到效果
+        /// 使用 AsTable 方法也可以达到效果<para></para>
+        /// 示例：WithSql("select * from id=?id", new { id = 1 })<para></para>
+        /// 提示：parms 参数还可以传 Dictionary&lt;string, object&gt;
         /// </summary>
         /// <param name="sql">SQL语句</param>
+        /// <param name="parms">参数</param>
         /// <returns></returns>
-        ISelect<T1> WithSql(string sql);
+        ISelect<T1> WithSql(string sql, object parms = null);
     }
 }

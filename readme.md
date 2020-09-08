@@ -19,7 +19,7 @@ FreeSql 是功能强大的对象关系映射技术(O/RM)，支持 .NETCore 2.1+ 
 | <img src="https://images.cnblogs.com/cnblogs_com/FreeSql/1656841/o_200424151826freesql_doc1.png" width="30" height="46"/> | [《新人学习指引》](https://www.cnblogs.com/FreeSql/p/11531300.html) \| [《Select》](https://github.com/2881099/FreeSql/wiki/%e6%9f%a5%e8%af%a2) \| [《Update》](https://github.com/2881099/FreeSql/wiki/%e4%bf%ae%e6%94%b9) \| [《Insert》](https://github.com/2881099/FreeSql/wiki/%e6%b7%bb%e5%8a%a0) \| [《Delete》](https://github.com/2881099/FreeSql/wiki/%e5%88%a0%e9%99%a4) |
 | <img src="https://images.cnblogs.com/cnblogs_com/FreeSql/1656841/o_200424151831freesql_doc2.png" width="30" height="46"/> | [《表达式函数》](https://github.com/2881099/FreeSql/wiki/%e8%a1%a8%e8%be%be%e5%bc%8f%e5%87%bd%e6%95%b0) \| [《CodeFirst》](https://github.com/2881099/FreeSql/wiki/CodeFirst) \| [《DbFirst》](https://github.com/2881099/FreeSql/wiki/DbFirst) \| [《过滤器》](https://github.com/2881099/FreeSql/wiki/%e8%bf%87%e6%bb%a4%e5%99%a8) |
 | <img src="https://images.cnblogs.com/cnblogs_com/FreeSql/1656841/o_200424151835freesql_doc3.png" width="30" height="46"/> | [《Repository》](https://github.com/2881099/FreeSql/wiki/Repository) \| [《UnitOfWork》](https://github.com/2881099/FreeSql/wiki/%e5%b7%a5%e4%bd%9c%e5%8d%95%e5%85%83) \| [《AOP》](https://github.com/2881099/FreeSql/wiki/AOP) \| [《DbContext》](https://github.com/2881099/FreeSql/wiki/DbContext) |
-| <img src="https://images.cnblogs.com/cnblogs_com/FreeSql/1656841/o_200424151840freesql_doc4.png" width="30" height="46"/> | [《读写分离》](https://github.com/2881099/FreeSql/wiki/%e8%af%bb%e5%86%99%e5%88%86%e7%a6%bb) \| [《分区分表》](https://github.com/2881099/FreeSql/wiki/%e5%88%86%e5%8c%ba%e5%88%86%e8%a1%a8) \| [《黑科技》](https://github.com/2881099/FreeSql/wiki/%E9%AA%9A%E6%93%8D%E4%BD%9C) \| [《常见问题》](https://github.com/dotnetcore/FreeSql/wiki/%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98)  \| [*更新日志*](https://github.com/2881099/FreeSql/wiki/%e6%9b%b4%e6%96%b0%e6%97%a5%e5%bf%97) |
+| <img src="https://images.cnblogs.com/cnblogs_com/FreeSql/1656841/o_200424151840freesql_doc4.png" width="30" height="46"/> | [《读写分离》](https://github.com/2881099/FreeSql/wiki/%e8%af%bb%e5%86%99%e5%88%86%e7%a6%bb) \| [《分表分库》](https://github.com/2881099/FreeSql/wiki/%e5%88%86%e8%a1%a8%e5%88%86%e5%ba%93) \| [《黑科技》](https://github.com/2881099/FreeSql/wiki/%E9%AA%9A%E6%93%8D%E4%BD%9C) \| [《常见问题》](https://github.com/dotnetcore/FreeSql/wiki/%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98)  \| [*更新日志*](https://github.com/2881099/FreeSql/wiki/%e6%9b%b4%e6%96%b0%e6%97%a5%e5%bf%97) |
 
 > FreeSql 提供多种使用习惯，请根据实际情况选择团队合适的一种：
 
@@ -37,7 +37,7 @@ FreeSql 是功能强大的对象关系映射技术(O/RM)，支持 .NETCore 2.1+ 
 - [内容管理系统](https://github.com/hejiyong/fscms)
 
 <p align="center">
-  <img src="https://images.cnblogs.com/cnblogs_com/kellynic/133561/o_200610084147functions09.png"/>
+  <img src="https://images.cnblogs.com/cnblogs_com/kellynic/133561/o_200822210642functions10.png"/>
 </p>
 
 ## 🚀 　Quick start
@@ -183,14 +183,15 @@ Elapsed: 00:00:00.6495301; Query Entity Counts: 131072; ORM: Dapper
 [feijie999](https://github.com/feijie999)、
 constantine
 
-QQ群：4336577(已满)、8578575(在线)
+QQ群：4336577(已满)、8578575(在线)、52508226(在线)
 
 ## 💕 　Donation
 
-L*y 58元、花花 88元、麦兜很乖 50元、网络来者 2000元、John 99.99元、alex 666元、bacongao 36元、无名 100元、Eternity 188元、无名 10元、⌒.Helper~..oO 66元、习惯与被习惯 100元、无名 100元、蔡易喋 88.88元、中讯科技 1000元、Good Good Work 24元、炽焰 6.6元、Nothing 100元、兰州天擎赵 500元
+L*y 58元、花花 88元、麦兜很乖 50元、网络来者 2000元、John 99.99元、alex 666元、bacongao 36元、无名 100元、Eternity 188元、无名 10元、⌒.Helper~..oO 66元、习惯与被习惯 100元、无名 100元、蔡易喋 88.88元、中讯科技 1000元、Good Good Work 24元、炽焰 6.6元、Nothing 100元、兰州天擎赵 500元、哈利路亚 300元、
+无名 100元、蛰伏 99.99元、TCYM 66.66元、MOTA 5元、LDZXG 30元、Near 30元
 
 > Thank you for your donation
 
-| [Alipay](https://images.cnblogs.com/cnblogs_com/kellynic/133561/o_200417052520IMG_7936(20200123-155553).png) | [WeChat](https://images.cnblogs.com/cnblogs_com/kellynic/133561/o_200417052707IMG_7935(20200123-155553).png) |
-| - | - |
-| <img height="300" src="https://images.cnblogs.com/cnblogs_com/kellynic/133561/o_200417052520IMG_7936(20200123-155553).png"/> | <img height="300" src="https://images.cnblogs.com/cnblogs_com/kellynic/133561/o_200417052707IMG_7935(20200123-155553).png"/> |
+- [Alipay](https://www.cnblogs.com/FreeSql/gallery/image/290628.html)
+
+- [WeChat](https://www.cnblogs.com/FreeSql/gallery/image/290627.html)

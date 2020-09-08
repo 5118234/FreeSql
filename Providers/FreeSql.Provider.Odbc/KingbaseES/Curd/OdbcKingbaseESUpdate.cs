@@ -18,7 +18,7 @@ namespace FreeSql.Odbc.KingbaseES
         {
         }
 
-        internal string InternalTableAlias;
+        internal string InternalTableAlias { get; set; }
         internal StringBuilder InternalSbSet => _set;
         internal StringBuilder InternalSbSetIncr => _setIncr;
         internal Dictionary<string, bool> InternalIgnore => _ignore;
@@ -53,7 +53,7 @@ namespace FreeSql.Odbc.KingbaseES
             try
             {
                 ret = _orm.Ado.Query<T1>(_table.TypeLazy ?? _table.Type, _connection, _transaction, CommandType.Text, sql, dbParms);
-                ValidateVersionAndThrow(ret.Count);
+                ValidateVersionAndThrow(ret.Count, sql, dbParms);
             }
             catch (Exception ex)
             {
@@ -83,7 +83,7 @@ namespace FreeSql.Odbc.KingbaseES
             {
                 if (pkidx > 0) caseWhen.Append(" || '+' || ");
                 if (string.IsNullOrEmpty(InternalTableAlias) == false) caseWhen.Append(InternalTableAlias).Append(".");
-                caseWhen.Append(_commonUtils.QuoteReadColumn(pk.CsType, pk.Attribute.MapType, _commonUtils.QuoteSqlName(pk.Attribute.Name))).Append("::varchar");
+                caseWhen.Append(_commonUtils.QuoteReadColumn(pk.CsType, pk.Attribute.MapType, _commonUtils.QuoteSqlName(pk.Attribute.Name))).Append("::text");
                 ++pkidx;
             }
             caseWhen.Append(")");
@@ -93,7 +93,7 @@ namespace FreeSql.Odbc.KingbaseES
         {
             if (_table.Primarys.Length == 1)
             {
-                sb.Append(_commonUtils.FormatSql("{0}", _table.Primarys.First().GetMapValue(d)));
+                sb.Append(_commonUtils.FormatSql("{0}", _table.Primarys[0].GetDbValue(d)));
                 return;
             }
             sb.Append("(");
@@ -101,7 +101,7 @@ namespace FreeSql.Odbc.KingbaseES
             foreach (var pk in _table.Primarys)
             {
                 if (pkidx > 0) sb.Append(" || '+' || ");
-                sb.Append(_commonUtils.FormatSql("{0}", pk.GetMapValue(d))).Append("::varchar");
+                sb.Append(_commonUtils.FormatSql("{0}", pk.GetDbValue(d))).Append("::text");
                 ++pkidx;
             }
             sb.Append(")");
@@ -110,6 +110,11 @@ namespace FreeSql.Odbc.KingbaseES
         protected override void ToSqlCaseWhenEnd(StringBuilder sb, ColumnInfo col)
         {
             if (_noneParameter == false) return;
+            if (col.Attribute.MapType == typeof(string))
+            {
+                sb.Append("::text");
+                return;
+            }
             var dbtype = _commonUtils.CodeFirst.GetDbInfo(col.Attribute.MapType)?.dbtype;
             if (dbtype == null) return;
 
@@ -145,7 +150,7 @@ namespace FreeSql.Odbc.KingbaseES
             try
             {
                 ret = await _orm.Ado.QueryAsync<T1>(_table.TypeLazy ?? _table.Type, _connection, _transaction, CommandType.Text, sql, dbParms);
-                ValidateVersionAndThrow(ret.Count);
+                ValidateVersionAndThrow(ret.Count, sql, dbParms);
             }
             catch (Exception ex)
             {

@@ -1,6 +1,7 @@
 ﻿using FreeSql;
 using FreeSql.DataAnnotations;
 using FreeSql.Extensions;
+using FreeSql.Internal.CommonProvider;
 using FreeSql.Internal.Model;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -40,6 +41,7 @@ namespace base_entity
         public class Products : BaseEntity<Products, int>
         {
             public string title { get; set; }
+            public int testint { get; set; }
         }
 
         static AsyncLocal<IUnitOfWork> _asyncUow = new AsyncLocal<IUnitOfWork>();
@@ -49,18 +51,26 @@ namespace base_entity
             public CollationTypeEnum val { get; set; } = CollationTypeEnum.Binary;
         }
 
+        class Sys_reg_user
+        {
+            public Guid Id { get; set; }
+            public Guid OwnerId { get; set; }
+            public string UnionId { get; set; }
+
+            [Navigate(nameof(OwnerId))]
+            public Sys_owner Owner { get; set; }
+        }
+        class Sys_owner
+        {
+            public Guid Id { get; set; }
+            public Guid RegUserId { get; set; }
+
+            [Navigate(nameof(RegUserId))]
+            public Sys_reg_user RegUser { get; set; }
+        }
+
         static void Main(string[] args)
         {
-//            var result2 = Newtonsoft.Json.JsonConvert.DeserializeObject<TestEnumCls>(@"
-//{
-//  ""val"": ""Binary""
-//}");
-//            var result1 = System.Text.Json.JsonSerializer.Deserialize<TestEnumCls>(@"
-//{
-//  ""val"": ""Binary""
-//}");
-
-
             #region 初始化 IFreeSql
             var fsql = new FreeSql.FreeSqlBuilder()
                 .UseAutoSyncStructure(true)
@@ -68,7 +78,7 @@ namespace base_entity
 
                 .UseConnectionString(FreeSql.DataType.Sqlite, "data source=test.db;max pool size=5")
 
-                //.UseConnectionString(FreeSql.DataType.MySql, "Data Source=127.0.0.1;Port=3306;User ID=root;Password=root;Initial Catalog=cccddd;Charset=utf8;SslMode=none;Max pool size=2")
+                .UseConnectionString(FreeSql.DataType.MySql, "Data Source=127.0.0.1;Port=3306;User ID=root;Password=root;Initial Catalog=cccddd;Charset=utf8;SslMode=none;Max pool size=2")
 
                 //.UseConnectionString(FreeSql.DataType.SqlServer, "Data Source=.;Integrated Security=True;Initial Catalog=freesqlTest;Pooling=true;Max Pool Size=3")
 
@@ -97,6 +107,26 @@ namespace base_entity
             BaseEntity.Initialization(fsql, () => _asyncUow.Value);
             #endregion
 
+            var tsql1 = fsql.Select<Sys_reg_user>()
+                .Include(a => a.Owner)
+                .Where(a => a.UnionId == "xxx")
+                .ToSql();
+            var tsql2 = fsql.Select<Sys_owner>()
+                .Where(a => a.RegUser.UnionId == "xxx2")
+                .ToSql();
+
+
+            var names = (fsql.Select<object>() as Select0Provider)._commonUtils.SplitTableName("`Backups.ProductStockBak`");
+
+
+            var dbparams = fsql.Ado.GetDbParamtersByObject(new { id = 1, name = "xxx" });
+
+
+
+
+
+            var sql = fsql.CodeFirst.GetComparisonDDLStatements(typeof(EMSServerModel.Model.User), "testxsx001");
+
             var test01 = EMSServerModel.Model.User.Select.IncludeMany(a => a.Roles).ToList();
             var test02 = EMSServerModel.Model.UserRole.Select.ToList();
             var test01tb = EMSServerModel.Model.User.Orm.CodeFirst.GetTableByEntity(typeof(EMSServerModel.Model.User));
@@ -111,19 +141,22 @@ namespace base_entity
 
             var wdy1 = JsonConvert.DeserializeObject<DynamicFilterInfo>(@"
 {
-  ""Logic"" : ""Or"",
+  ""Logic"" : ""And"",
   ""Filters"" :
   [
     {
-      ""Field"" : ""title"",
-      ""Operator"" : ""eq"",
-      ""Value"" : ""product-1"",
+      ""Logic"" : ""Or"",
       ""Filters"" :
       [
         {
           ""Field"" : ""title"",
           ""Operator"" : ""contains"",
           ""Value"" : ""product-1111"",
+        },
+        {
+          ""Field"" : ""title"",
+          ""Operator"" : ""contains"",
+          ""Value"" : ""product-2222"",
         }
       ]
     },
@@ -141,6 +174,16 @@ namespace base_entity
       ""Field"" : ""title"",
       ""Operator"" : ""eq"",
       ""Value"" : ""product-4""
+    },
+    {
+      ""Field"" : ""testint"",
+      ""Operator"" : ""Range"",
+      ""Value"" : [100,200]
+    },
+    {
+      ""Field"" : ""testint"",
+      ""Operator"" : ""Range"",
+      ""Value"" : [""101"",""202""]
     },
   ]
 }
@@ -185,10 +228,31 @@ namespace base_entity
       ""Field"" : ""title"",
       ""Operator"" : 8,
       ""Value"" : ""product-4""
+    },
+    {
+      ""Field"" : ""testint"",
+      ""Operator"" : 8,
+      ""Value"" : 11
+    },
+    {
+      ""Field"" : ""testint"",
+      ""Operator"" : 8,
+      ""Value"" : ""12""
+    },
+    {
+      ""Field"" : ""testint"",
+      ""Operator"" : ""Range"",
+      ""Value"" : [100,200]
+    },
+    {
+      ""Field"" : ""testint"",
+      ""Operator"" : ""Range"",
+      ""Value"" : [""101"",""202""]
     }
   ]
 }
 ", config);
+            Products.Select.WhereDynamicFilter(wdy1).ToList();
             Products.Select.WhereDynamicFilter(wdy2).ToList();
 
             var items1 = Products.Select.Limit(10).OrderByDescending(a => a.CreateTime).ToList();

@@ -54,13 +54,15 @@ namespace FreeSql
         IUpdate<T1> BatchProgress(Action<BatchProgressStatus<T1>> callback);
 
         /// <summary>
-        /// 更新数据，设置更新的实体
+        /// 更新数据，设置更新的实体<para></para>
+        /// 注意：实体必须定义主键，并且最终会自动附加条件 where id = source.Id
         /// </summary>
         /// <param name="source">实体</param>
         /// <returns></returns>
         IUpdate<T1> SetSource(T1 source);
         /// <summary>
-        /// 更新数据，设置更新的实体集合
+        /// 更新数据，设置更新的实体集合<para></para>
+        /// 注意：实体必须定义主键，并且最终会自动附加条件 where id in (source.Id)
         /// </summary>
         /// <param name="source">实体集合</param>
         /// <returns></returns>
@@ -142,7 +144,8 @@ namespace FreeSql
         /// <returns></returns>
         IUpdate<T1> SetIf<TMember>(bool condition, Expression<Func<T1, TMember>> exp);
         /// <summary>
-        /// 设置值，自定义SQL语法，SetRaw("title = ?title", new { title = "newtitle" })
+        /// 设置值，自定义SQL语法，SetRaw("title = ?title", new { title = "newtitle" })<para></para>
+        /// 提示：parms 参数还可以传 Dictionary&lt;string, object&gt;
         /// </summary>
         /// <param name="sql">sql语法</param>
         /// <param name="parms">参数</param>
@@ -167,7 +170,16 @@ namespace FreeSql
         /// <returns></returns>
         IUpdate<T1> Where(Expression<Func<T1, bool>> exp);
         /// <summary>
-        /// 原生sql语法条件，Where("id = ?id", new { id = 1 })
+        /// lambda表达式条件，仅支持实体基础成员（不包含导航对象）<para></para>
+        /// 若想使用导航对象，请使用 ISelect.ToUpdate() 方法
+        /// </summary>
+        /// <param name="condition">true 时生效</param>
+        /// <param name="exp">lambda表达式条件</param>
+        /// <returns></returns>
+        IUpdate<T1> WhereIf(bool condition, Expression<Func<T1, bool>> exp);
+        /// <summary>
+        /// 原生sql语法条件，Where("id = ?id", new { id = 1 })<para></para>
+        /// 提示：parms 参数还可以传 Dictionary&lt;string, object&gt;
         /// </summary>
         /// <param name="sql">sql语法条件</param>
         /// <param name="parms">参数</param>

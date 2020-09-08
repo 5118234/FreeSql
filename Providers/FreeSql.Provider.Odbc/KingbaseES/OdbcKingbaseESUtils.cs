@@ -114,7 +114,7 @@ namespace FreeSql.Odbc.KingbaseES
         public override string[] SplitTableName(string name) => GetSplitTableNames(name, '"', '"', 2);
         public override string QuoteParamterName(string name) => $"@{name.ToUpper()}";
         public override string IsNull(string sql, object value) => $"coalesce({sql}, {value})";
-        public override string StringConcat(string[] objs, Type[] types) => $"{string.Join(" || ", objs.Select((a, b) => b == 0 ? $"{a}::varchar" : a))}"; //First ::varchar
+        public override string StringConcat(string[] objs, Type[] types) => $"{string.Join(" || ", objs.Select((a, b) => b == 0 ? $"{a}::text" : a))}"; //First ::text
         public override string Mod(string left, string right, Type leftType, Type rightType) => $"{left} % {right}";
         public override string Div(string left, string right, Type leftType, Type rightType) => $"{left} / {right}";
         public override string Now => "current_timestamp";
@@ -123,7 +123,7 @@ namespace FreeSql.Odbc.KingbaseES
         public override string QuoteWriteParamter(Type type, string paramterName) => paramterName;
         public override string QuoteReadColumn(Type type, Type mapType, string columnName) => columnName;
 
-        public override string GetNoneParamaterSqlValue(List<DbParameter> specialParams, Type type, object value)
+        public override string GetNoneParamaterSqlValue(List<DbParameter> specialParams, string specialParamFlag, Type type, object value)
         {
             if (value == null) return "NULL";
             if (type.IsNumberType()) return string.Format(CultureInfo.InvariantCulture, "{0}", value);
@@ -145,7 +145,7 @@ namespace FreeSql.Odbc.KingbaseES
                 {
                     var item = valueArr.GetValue(a);
                     if (a > 0) sb.Append(",");
-                    sb.Append(GetNoneParamaterSqlValue(specialParams, eleType, item));
+                    sb.Append(GetNoneParamaterSqlValue(specialParams, specialParamFlag, eleType, item));
                 }
                 sb.Append("]");
                 var dbinfo = _orm.CodeFirst.GetDbInfo(type);

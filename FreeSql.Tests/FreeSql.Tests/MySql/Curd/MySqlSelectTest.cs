@@ -1,8 +1,10 @@
 using FreeSql.DataAnnotations;
+using FreeSql.Internal.CommonProvider;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Intrinsics.X86;
 using Xunit;
 
 namespace FreeSql.Tests.MySql
@@ -510,6 +512,20 @@ namespace FreeSql.Tests.MySql
             sql = query.ToSql().Replace("\r\n", "");
             Assert.Equal("SELECT a.`Id`, a.`Clicks`, a.`TypeGuid`, a.`Title`, a.`CreateTime` FROM `tb_topic` a LEFT JOIN TestTypeInfo b on b.Guid = a.TypeGuid and b.Name = ?bname", sql);
             query.ToList();
+
+            sql = select.ToSql(a => a.Type.Parent);
+            Assert.Equal(@"SELECT a__Type__Parent.`Id` as1, a__Type__Parent.`Name` as2 
+FROM `tb_topic` a 
+LEFT JOIN `TestTypeInfo` a__Type ON a__Type.`Guid` = a.`TypeGuid` 
+LEFT JOIN `TestTypeParentInfo` a__Type__Parent ON a__Type__Parent.`Id` = a__Type.`ParentId`", sql);
+            var ccdata1 = select.ToList(a => a.Type.Parent);
+
+            sql = select.Include(a => a.Type.Parent).ToSql(a => a.Type);
+            Assert.Equal(@"SELECT a__Type.`Guid` as1, a__Type.`ParentId` as2, a__Type.`Name` as3, a__Type__Parent.`Id` as4, a__Type__Parent.`Name` as5 
+FROM `tb_topic` a 
+LEFT JOIN `TestTypeInfo` a__Type ON a__Type.`Guid` = a.`TypeGuid` 
+LEFT JOIN `TestTypeParentInfo` a__Type__Parent ON a__Type__Parent.`Id` = a__Type.`ParentId`", sql);
+            var ccdata2 = select.Include(a => a.Type.Parent).ToList(a => a.Type);
         }
         [Fact]
         public void InnerJoin()
@@ -913,7 +929,7 @@ namespace FreeSql.Tests.MySql
                 {
                     b.Key.Title,
                     b.Key.yyyy,
-
+                    b.Key,
                     cou = b.Count(),
                     sum2 = b.Sum(b.Value.TypeGuid)
                 });
@@ -1310,6 +1326,15 @@ WHERE ((b.`IsFinished` OR a.`TaskType` = 3) AND b.`EnabledMark` = 1)", groupsql1
                 new TestInclude_OneToManyModel4{ model3333Id333 = model3_2.id, title444 = "testmodel3_4__333" }
             };
             Assert.Equal(5, g.mysql.Insert(model4s).ExecuteAffrows());
+
+            var sel = g.mysql.Select<TestInclude_OneToManyModel2, TestInclude_OneToManyModel3>();
+            //var tb1 = (sel as Select0Provider)._tables[1];
+            //tb1.Type = Internal.Model.SelectTableInfoType.LeftJoin;
+            //tb1.On = $"b.id = ({g.mysql.Select<TestInclude_OneToManyModel3>().As("b2").Where("a.model2id = model2111Idaaa").Limit(1).ToSql("id")})";
+            var sql = sel
+                .LeftJoin((a,b) => b.id == g.mysql.Select<TestInclude_OneToManyModel3>().As("b2").Where(b2 => a.model2id == b2.model2111Idaaa).First(b2 => b2.id))
+                .ToSql((a, b) => new { a, b });
+
 
             var t0 = g.mysql.Select<TestInclude_OneToManyModel2>()
                 .IncludeMany(a => a.childs.Where(m3 => m3.model2111Idaaa == a.model2id))
@@ -1968,7 +1993,7 @@ WHERE ((b.`IsFinished` OR a.`TaskType` = 3) AND b.`EnabledMark` = 1)", groupsql1
             Assert.Equal("110100", t3[0].Childs[0].Childs[0].Code);
             Assert.Equal("110101", t3[0].Childs[0].Childs[1].Code);
 
-            //t3 = fsql.Select<VM_District_Child>().Where(a => a.Name == "中国").AsCteTree().OrderBy(a => a.Code).ToTreeList();
+            //t3 = fsql.Select<VM_District_Child>().Where(a => a.Name == "中国").AsTreeCte().OrderBy(a => a.Code).ToTreeList();
             //Assert.Single(t3);
             //Assert.Equal("100000", t3[0].Code);
             //Assert.Single(t3[0].Childs);
@@ -1977,18 +2002,34 @@ WHERE ((b.`IsFinished` OR a.`TaskType` = 3) AND b.`EnabledMark` = 1)", groupsql1
             //Assert.Equal("110100", t3[0].Childs[0].Childs[0].Code);
             //Assert.Equal("110101", t3[0].Childs[0].Childs[1].Code);
 
-            //t3 = fsql.Select<VM_District_Child>().Where(a => a.Name == "中国").AsCteTree().OrderBy(a => a.Code).ToList();
+            //t3 = fsql.Select<VM_District_Child>().Where(a => a.Name == "中国").AsTreeCte().OrderBy(a => a.Code).ToList();
             //Assert.Equal(4, t3.Count);
             //Assert.Equal("100000", t3[0].Code);
             //Assert.Equal("110000", t3[1].Code);
             //Assert.Equal("110100", t3[2].Code);
             //Assert.Equal("110101", t3[3].Code);
 
-            //t3 = fsql.Select<VM_District_Child>().Where(a => a.Name == "北京").AsCteTree().OrderBy(a => a.Code).ToList();
+            //t3 = fsql.Select<VM_District_Child>().Where(a => a.Name == "北京").AsTreeCte().OrderBy(a => a.Code).ToList();
             //Assert.Equal(3, t3.Count);
             //Assert.Equal("110000", t3[0].Code);
             //Assert.Equal("110100", t3[1].Code);
             //Assert.Equal("110101", t3[2].Code);
+
+            //var select = fsql.Select<VM_District_Child>()
+            //    .Where(a => a.Name == "中国")
+            //    .AsTreeCte()
+            //    //.OrderBy("a.cte_level desc") //递归层级
+            //    ;
+            //// var list = select.ToList(); //自己调试看查到的数据
+            //select.ToUpdate().Set(a => a.testint, 855).ExecuteAffrows();
+            //Assert.Equal(855, fsql.Select<VM_District_Child>()
+            //    .Where(a => a.Name == "中国")
+            //    .AsTreeCte().Distinct().First(a => a.testint));
+
+            //Assert.Equal(4, select.ToDelete().ExecuteAffrows());
+            //Assert.False(fsql.Select<VM_District_Child>()
+            //    .Where(a => a.Name == "中国")
+            //    .AsTreeCte().Any());
         }
 
         [Table(Name = "D_District")]
@@ -2002,6 +2043,8 @@ WHERE ((b.`IsFinished` OR a.`TaskType` = 3) AND b.`EnabledMark` = 1)", groupsql1
 
             [Column(StringLength = 6)]
             public virtual string ParentCode { get; set; }
+
+            public int testint { get; set; }
         }
         [Table(Name = "D_District", DisableSyncStructure = true)]
         public class VM_District_Child : BaseDistrict

@@ -1,6 +1,8 @@
 using FreeSql.DataAnnotations;
 using FreeSql.Tests.DataContext.SqlServer;
+using NetTaste;
 using System;
+using System.Collections.Generic;
 using Xunit;
 
 namespace FreeSql.Tests.SqlServer
@@ -27,6 +29,11 @@ namespace FreeSql.Tests.SqlServer
             var t2 = g.sqlserver.Ado.SlavePools.Count;
         }
 
+        [Fact]
+        public void ExecuteTest()
+        {
+            Assert.True(g.sqlserver.Ado.ExecuteConnectTest());
+        }
         [Fact]
         public void ExecuteReader()
         {
@@ -78,8 +85,8 @@ namespace FreeSql.Tests.SqlServer
 
             var t4 = g.sqlserver.Ado.Query<(int, int, string, string DateTime)>("select * from xxx");
 
-            var t5 = g.sqlserver.Ado.Query<dynamic>(System.Data.CommandType.Text, "select * from xxx where Id = @Id",
-                new System.Data.SqlClient.SqlParameter("Id", 1));
+            var t5 = g.sqlserver.Ado.Query<dynamic>("select * from xxx where Id = @Id",
+                new Dictionary<string, object> { ["id"] = 1 });
         }
 
         [Fact]
